@@ -1,0 +1,5 @@
+{
+  "name": "Prontu",
+  "description": "Uma aplicação de controle financeiro para atendimentos de profissionais da saúde, permitindo o gerenciamento de pacientes, agendamentos e geração de relatórios.",
+  "requestFramePermissions": []
+}
