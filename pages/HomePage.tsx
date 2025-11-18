@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Appointment, Patient, AppointmentStatus, User } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
 import AddAppointmentModal from '../components/AddAppointmentModal';
@@ -20,6 +20,7 @@ interface HomePageProps {
   updateUser: (user: Omit<User, 'id' | 'plan'>) => void;
   theme: string;
   toggleTheme: () => void;
+  ensureAppointmentsForDate: (date: Date) => Promise<void>;
 }
 
 const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date) => void }> = ({ selectedDate, setSelectedDate }) => {
@@ -80,13 +81,17 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
 };
 
 
-const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme }) => {
+const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme, ensureAppointmentsForDate }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const selectedDateString = selectedDate.toISOString().split('T')[0];
+
+  useEffect(() => {
+    ensureAppointmentsForDate(selectedDate);
+  }, [selectedDate, patients, ensureAppointmentsForDate]);
 
   const dailyAppointments = useMemo(() => {
     return appointments

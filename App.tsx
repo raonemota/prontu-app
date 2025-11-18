@@ -193,7 +193,7 @@ const App: React.FC = () => {
       alert(`Erro ao adicionar paciente: ${errorMessage}`);
     } else if (data) {
       setPatients(prev => [...prev, data as Patient]);
-      generateAppointmentsForPatient(data as Patient, session.user.id);
+      // Removed generateAppointmentsForPatient call
     }
   };
 
@@ -259,46 +259,41 @@ const App: React.FC = () => {
     }
   };
   
-  const generateAppointmentsForPatient = (patient: Patient, userId: string) => {
+  const ensureAppointmentsForDate = async (date: Date) => {
+      if (!session) return;
+      const dateString = date.toISOString().split('T')[0];
+      const dayOfWeek = date.getDay();
+
       const newAppointments: Omit<Appointment, 'id'>[] = [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
 
-      if (!Array.isArray(patient.appointment_days)) {
-        console.warn(`generateAppointmentsForPatient: patient.appointment_days is not an array for patient ID ${patient.id}. Skipping.`);
-        return;
-      }
+      // Filter active patients who have an appointment on this day of week
+      const relevantPatients = patients.filter(p =>
+        Array.isArray(p.appointment_days) && p.appointment_days.includes(dayOfWeek)
+      );
 
-      for (let i = 0; i < 90; i++) { // Generate for the next 3 months
-          const date = new Date(today);
-          date.setDate(today.getDate() + i);
-          const dayOfWeek = date.getDay();
-          
-          if (patient.appointment_days.includes(dayOfWeek)) {
-              const dateString = date.toISOString().split('T')[0];
-               newAppointments.push({
-                  patient_id: patient.id,
-                  user_id: userId,
-                  date: dateString,
-                  time: patient.appointment_time,
-                  status: AppointmentStatus.NoStatus,
-              });
-          }
-      }
-      
-      const saveNewAppointments = async () => {
-        if (newAppointments.length === 0) return;
-        const { data, error } = await supabase.from('appointments').insert(newAppointments).select();
-        if (error) {
-          const errorMessage = getErrorMessage(error);
-          console.error("Erro ao gerar agendamentos:", errorMessage);
-          alert(`Erro ao gerar agendamentos: ${errorMessage}`);
-        } else if (data) {
-          setAppointments(prev => [...prev, ...data]);
+      for (const patient of relevantPatients) {
+        // Check if appointment exists locally
+        const exists = appointments.some(a => a.patient_id === patient.id && a.date === dateString);
+        if (!exists) {
+           newAppointments.push({
+              patient_id: patient.id,
+              user_id: session.user.id,
+              date: dateString,
+              time: patient.appointment_time,
+              status: AppointmentStatus.NoStatus,
+          });
         }
       }
-      saveNewAppointments();
-  }
+
+      if (newAppointments.length > 0) {
+          const { data, error } = await supabase.from('appointments').insert(newAppointments).select();
+          if (error) {
+             console.error("Error ensuring appointments:", error);
+          } else if (data) {
+             setAppointments(prev => [...prev, ...data].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
+          }
+      }
+  };
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'user_id'>) => {
     if (!session) return;
@@ -425,6 +420,7 @@ const App: React.FC = () => {
           updateUser={updateUserProfile}
           theme={theme}
           toggleTheme={toggleTheme}
+          ensureAppointmentsForDate={ensureAppointmentsForDate}
         />;
       case Page.Patients:
         return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} deactivatePatient={deactivatePatient} clinics={clinics} setActivePage={setActivePage} />;
@@ -457,6 +453,7 @@ const App: React.FC = () => {
           updateUser={updateUserProfile}
           theme={theme}
           toggleTheme={toggleTheme}
+          ensureAppointmentsForDate={ensureAppointmentsForDate}
         />;
     }
   };
