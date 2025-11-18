@@ -1,17 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { Patient, Category, Clinic } from '../types';
+import { Patient, Category, Clinic, Page } from '../types';
 import PatientListItem from '../components/PatientListItem';
 import AddPatientModal from '../components/AddPatientModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
+import SubPageHeader from '../components/SubPageHeader';
 
 interface PatientsPageProps {
   patients: Patient[];
   addPatient: (patient: Omit<Patient, 'id' | 'profile_pic' | 'user_id' | 'clinics'>) => void;
   updatePatient: (patientId: number, patient: Omit<Patient, 'id' | 'profile_pic' | 'user_id' | 'clinics'>) => void;
+  deactivatePatient: (patientId: number) => Promise<boolean>;
   clinics: Clinic[];
+  setActivePage: (page: Page) => void;
 }
 
-const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updatePatient, clinics }) => {
+const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updatePatient, deactivatePatient, clinics, setActivePage }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<Category | 'all'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,9 +43,20 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
     setIsModalOpen(false);
   };
 
+  const handleDeletePatient = async (patientId: number): Promise<boolean> => {
+      return await deactivatePatient(patientId);
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-dark dark:text-dark-text">Pacientes Cadastrados</h1>
+      <SubPageHeader 
+        title="Pacientes" 
+        onBack={() => setActivePage(Page.Home)}
+      >
+        <button onClick={handleOpenAddModal} className="p-2 bg-primary/10 text-primary rounded-full" aria-label="Adicionar Paciente">
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      </SubPageHeader>
 
       <div className="space-y-4 bg-white dark:bg-dark-card p-4 rounded-xl shadow-md">
         <input
@@ -87,14 +101,6 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
         )}
       </div>
 
-      <button
-        onClick={handleOpenAddModal}
-        className="fixed bottom-24 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
-        aria-label="Novo Paciente"
-      >
-        <PlusIcon className="w-6 h-6" />
-      </button>
-
       {isModalOpen && (
         <AddPatientModal
           isOpen={isModalOpen}
@@ -103,6 +109,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
           updatePatient={updatePatient}
           patientToEdit={patientToEdit}
           clinics={clinics}
+          onDelete={handleDeletePatient}
         />
       )}
     </div>

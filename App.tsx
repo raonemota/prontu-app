@@ -10,6 +10,18 @@ import BottomNav from './components/BottomNav';
 import { supabase } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 
+// Helper function to extract a readable error message
+const getErrorMessage = (error: unknown): string => {
+  if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+    return (error as any).message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  console.error("Unknown error format:", error);
+  return 'Ocorreu um erro desconhecido. Verifique o console para mais detalhes.';
+};
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
@@ -26,12 +38,8 @@ const App: React.FC = () => {
       if (typeof storedPrefs === 'string') {
         return storedPrefs;
       }
-      const userMedia = window.matchMedia('(prefers-color-scheme: dark)');
-      if (userMedia.matches) {
-        return 'dark';
-      }
     }
-    return 'light';
+    return 'light'; // Default to light theme
   });
 
   const toggleTheme = () => {
@@ -83,7 +91,14 @@ const App: React.FC = () => {
               .select('*')
               .eq('id', userId)
               .single();
-          if (profileError) throw profileError;
+          
+          if (profileError || !profileData) {
+              const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
+              console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
+              alert(`Não foi possível carregar os dados do seu perfil: ${errorMessage}\n\nIsso pode ser um problema com as permissões de segurança (RLS). Você será desconectado.`);
+              await supabase.auth.signOut();
+              return;
+          }
           setUserProfile(profileData);
 
           const { data: clinicsData, error: clinicsError } = await supabase
@@ -98,6 +113,7 @@ const App: React.FC = () => {
               .from('patients')
               .select('*, clinics(name)')
               .eq('user_id', userId)
+              .eq('is_active', true) // Only fetch active patients
               .order('name');
           if (patientsError) throw patientsError;
           setPatients(patientsData as Patient[] || []);
@@ -110,9 +126,10 @@ const App: React.FC = () => {
           if (appointmentsError) throw appointmentsError;
           setAppointments(appointmentsData || []);
 
-      } catch (error) {
-          console.error("Erro ao buscar dados:", error);
-          alert("Não foi possível carregar os dados. Verifique sua conexão e as políticas RLS no Supabase.");
+      } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error);
+          console.error("Erro ao buscar dados:", errorMessage);
+          alert(`Não foi possível carregar os dados: ${errorMessage}\n\nPor favor, verifique sua conexão e se as políticas de segurança (RLS) estão configuradas corretamente no seu painel Supabase.`);
       } finally {
           setLoading(false);
       }
@@ -120,16 +137,21 @@ const App: React.FC = () => {
 
   const updateUserProfile = async (updatedProfile: Omit<User, 'id' | 'plan'>) => {
     if (!userProfile) return;
-    const { data, error } = await supabase
-      .from('users')
-      .update(updatedProfile)
-      .eq('id', userProfile.id)
-      .select()
-      .single();
-    if (error) {
-      console.error("Erro ao atualizar perfil:", error);
-    } else if(data) {
-      setUserProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update(updatedProfile)
+        .eq('id', userProfile.id)
+        .select()
+        .single();
+      if (error) throw error;
+      if(data) {
+        setUserProfile(data);
+      }
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao atualizar perfil:", errorMessage);
+      alert(`Erro ao atualizar perfil: ${errorMessage}`);
     }
   };
 
@@ -147,7 +169,9 @@ const App: React.FC = () => {
 
     const { data, error } = await supabase.from('patients').insert(newPatientData).select('*, clinics(name)').single();
     if (error) {
-      console.error("Erro ao adicionar paciente:", error);
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao adicionar paciente:", errorMessage);
+      alert(`Erro ao adicionar paciente: ${errorMessage}`);
     } else if (data) {
       setPatients(prev => [...prev, data as Patient]);
       generateAppointmentsForPatient(data as Patient, session.user.id);
@@ -163,9 +187,43 @@ const App: React.FC = () => {
         .single();
     
     if (error) {
-        console.error("Erro ao atualizar paciente:", error);
+        const errorMessage = getErrorMessage(error);
+        console.error("Erro ao atualizar paciente:", errorMessage);
+        alert(`Erro ao atualizar paciente: ${errorMessage}`);
     } else if (data) {
         setPatients(prev => prev.map(p => p.id === patientId ? data as Patient : p));
+    }
+  };
+
+  const deactivatePatient = async (patientId: number): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .update({ is_active: false })
+        .eq('id', patientId)
+        .select(); // Use .select() to get a confirmation and trigger RLS errors reliably.
+
+      if (error) {
+        // Handle errors returned by the Supabase API (e.g., RLS violations)
+        throw error;
+      }
+
+      // Handle cases where RLS might prevent the update silently (no error, but no data returned)
+      if (!data || data.length === 0) {
+        throw new Error("A operação falhou. O paciente não foi encontrado ou as permissões de segurança (RLS) impediram a atualização.");
+      }
+      
+      // If successful, update local state and notify the user
+      setPatients(prev => prev.filter(p => p.id !== patientId));
+      alert("Paciente excluído com sucesso!");
+      return true;
+
+    } catch (error: unknown) {
+      // Catch both thrown Supabase errors and other exceptions
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro detalhado ao desativar paciente:", errorMessage);
+      alert(`Falha ao excluir o paciente: ${errorMessage}\n\nPor favor, verifique as permissões de segurança (RLS) na sua tabela 'patients' no Supabase.`);
+      return false;
     }
   };
   
@@ -195,7 +253,9 @@ const App: React.FC = () => {
         if (newAppointments.length === 0) return;
         const { data, error } = await supabase.from('appointments').insert(newAppointments).select();
         if (error) {
-          console.error("Erro ao gerar agendamentos:", error);
+          const errorMessage = getErrorMessage(error);
+          console.error("Erro ao gerar agendamentos:", errorMessage);
+          alert(`Erro ao gerar agendamentos: ${errorMessage}`);
         } else if (data) {
           setAppointments(prev => [...prev, ...data]);
         }
@@ -215,7 +275,9 @@ const App: React.FC = () => {
     const newAppointment = { ...appointment, user_id: session.user.id };
     const { data, error } = await supabase.from('appointments').insert(newAppointment).select().single();
     if (error) {
-      console.error("Erro ao adicionar agendamento:", error);
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao adicionar agendamento:", errorMessage);
+      alert(`Erro ao adicionar agendamento: ${errorMessage}`);
     } else if (data) {
       setAppointments(prev => [...prev, data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time)));
     }
@@ -224,9 +286,33 @@ const App: React.FC = () => {
   const updateAppointmentStatus = async (appointmentId: number, status: AppointmentStatus) => {
     const { data, error } = await supabase.from('appointments').update({ status }).eq('id', appointmentId).select().single();
     if (error) {
-      console.error("Erro ao atualizar status:", error);
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao atualizar status:", errorMessage);
+      alert(`Erro ao atualizar status: ${errorMessage}`);
     } else if (data) {
       setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)));
+    }
+  };
+
+  const updateAppointmentDetails = async (appointmentId: number, updatedDetails: { date: string, time: string, status: AppointmentStatus, observation: string | null }) => {
+    const { data, error } = await supabase.from('appointments').update(updatedDetails).eq('id', appointmentId).select().single();
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao atualizar agendamento:", errorMessage);
+      alert(`Erro ao atualizar agendamento: ${errorMessage}`);
+    } else if (data) {
+      setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time)));
+    }
+  };
+
+  const deleteAppointment = async (appointmentId: number) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', appointmentId);
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao deletar agendamento:", errorMessage);
+      alert(`Erro ao deletar agendamento: ${errorMessage}`);
+    } else {
+      setAppointments(prev => prev.filter(app => app.id !== appointmentId));
     }
   };
 
@@ -234,19 +320,31 @@ const App: React.FC = () => {
   const addClinic = async (clinic: Omit<Clinic, 'id' | 'user_id'>) => {
     if (!session) return;
     const { data, error } = await supabase.from('clinics').insert({ ...clinic, user_id: session.user.id }).select().single();
-    if (error) console.error("Erro ao adicionar clínica:", error);
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao adicionar clínica:", errorMessage);
+      alert(`Erro ao adicionar clínica: ${errorMessage}`);
+    }
     else if (data) setClinics(prev => [...prev, data]);
   };
 
   const updateClinic = async (clinicId: number, updatedClinic: Omit<Clinic, 'id' | 'user_id'>) => {
     const { data, error } = await supabase.from('clinics').update(updatedClinic).eq('id', clinicId).select().single();
-    if (error) console.error("Erro ao atualizar clínica:", error);
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao atualizar clínica:", errorMessage);
+      alert(`Erro ao atualizar clínica: ${errorMessage}`);
+    }
     else if (data) setClinics(prev => prev.map(c => c.id === clinicId ? data : c));
   };
 
   const deleteClinic = async (clinicId: number) => {
     const { error } = await supabase.from('clinics').delete().eq('id', clinicId);
-    if (error) console.error("Erro ao deletar clínica:", error);
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      console.error("Erro ao deletar clínica:", errorMessage);
+      alert(`Erro ao deletar clínica: ${errorMessage}`);
+    }
     else setClinics(prev => prev.filter(c => c.id !== clinicId));
   };
   
@@ -282,6 +380,8 @@ const App: React.FC = () => {
           patients={patients} 
           appointments={appointments} 
           updateAppointmentStatus={updateAppointmentStatus}
+          updateAppointmentDetails={updateAppointmentDetails}
+          deleteAppointment={deleteAppointment}
           addAppointment={addAppointment}
           user={userProfile}
           updateUser={updateUserProfile}
@@ -289,16 +389,24 @@ const App: React.FC = () => {
           toggleTheme={toggleTheme}
         />;
       case Page.Patients:
-        return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} clinics={clinics} />;
+        return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} deactivatePatient={deactivatePatient} clinics={clinics} setActivePage={setActivePage} />;
       case Page.Reports:
-        return <ReportsPage patients={patients} appointments={appointments} />;
+        return <ReportsPage 
+          patients={patients} 
+          appointments={appointments} 
+          clinics={clinics}
+          user={userProfile}
+          setActivePage={setActivePage} 
+        />;
       case Page.Clinics:
-        return <ClinicsPage clinics={clinics} addClinic={addClinic} updateClinic={updateClinic} deleteClinic={deleteClinic} />;
+        return <ClinicsPage clinics={clinics} addClinic={addClinic} updateClinic={updateClinic} deleteClinic={deleteClinic} setActivePage={setActivePage} />;
       default:
         return <HomePage 
           patients={patients} 
           appointments={appointments} 
           updateAppointmentStatus={updateAppointmentStatus}
+          updateAppointmentDetails={updateAppointmentDetails}
+          deleteAppointment={deleteAppointment}
           addAppointment={addAppointment}
           user={userProfile}
           updateUser={updateUserProfile}
@@ -309,11 +417,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-light dark:bg-dark-bg text-dark dark:text-dark-text pb-24">
-      <main className="p-4">
-        {renderPage()}
-      </main>
-      <BottomNav activePage={activePage} setActivePage={setActivePage} />
+    <div className="min-h-screen bg-gray-100 dark:bg-black">
+      <div className="w-full max-w-[800px] mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text">
+        <main className="p-4 pb-24">
+          {renderPage()}
+        </main>
+        <BottomNav activePage={activePage} setActivePage={setActivePage} />
+      </div>
     </div>
   );
 };

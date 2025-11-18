@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Appointment, Patient, AppointmentStatus, User } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
 import AddAppointmentModal from '../components/AddAppointmentModal';
+import EditAppointmentModal from '../components/EditAppointmentModal';
 import { ProfileModal } from '../components/ProfileModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 
@@ -9,6 +10,8 @@ interface HomePageProps {
   patients: Patient[];
   appointments: Appointment[];
   updateAppointmentStatus: (appointmentId: number, status: AppointmentStatus) => void;
+  updateAppointmentDetails: (appointmentId: number, updatedDetails: { date: string, time: string, status: AppointmentStatus, observation: string | null }) => void;
+  deleteAppointment: (appointmentId: number) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'user_id'>) => void;
   user: User;
   updateUser: (user: Omit<User, 'id' | 'plan'>) => void;
@@ -34,12 +37,15 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
     };
 
     return (
-        <div className="bg-white dark:bg-dark-card p-4 rounded-b-3xl shadow-lg">
+        <div className="bg-white dark:bg-dark-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <button onClick={() => changeDay(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&lt;</button>
-                <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
-                    {monthNames[selectedDate.getMonth()]} de {selectedDate.getFullYear()}
-                </h2>
+                <div className="text-center">
+                    <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
+                        {monthNames[selectedDate.getMonth()]} de {selectedDate.getFullYear()}
+                    </h2>
+                    <button onClick={() => setSelectedDate(new Date())} className="text-xs font-semibold text-primary hover:underline">Ir para hoje</button>
+                </div>
                 <button onClick={() => changeDay(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&gt;</button>
             </div>
             <div className="flex justify-around items-center">
@@ -64,9 +70,10 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
 };
 
 
-const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppointmentStatus, addAppointment, user, updateUser, theme, toggleTheme }) => {
+const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const selectedDateString = selectedDate.toISOString().split('T')[0];
@@ -83,27 +90,29 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
 
   return (
     <div className="space-y-6">
-      <header 
-        className="bg-primary text-white p-4 rounded-b-3xl -mx-4 -mt-4 shadow-lg"
-      >
-        <div className="flex items-center justify-between">
-            <img src="https://jqvtlpuzkjqliwobiruc.supabase.co/storage/v1/object/public/midias/logos/Untitled_Project-removebg-preview.png" alt="Prontu" className="h-12"/>
-            <div 
-                className="flex items-center space-x-3 cursor-pointer"
-                onClick={() => setIsProfileModalOpen(true)}
-                role="button"
-                aria-label="Abrir perfil do usuário"
-            >
-                <div>
-                  <h1 className="text-md font-semibold text-right">Olá, {user.full_name?.split(' ')[0]}!</h1>
-                  <p className="text-xs text-right opacity-80">Seja bem vindo(a)</p>
-                </div>
-                <img src={user.profile_pic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-white" />
-            </div>
-        </div>
-      </header>
-      
-      <DayNavigator selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
+      <div className="-mx-4 -mt-4 shadow-lg rounded-b-3xl overflow-hidden">
+        <header 
+          className="bg-white dark:bg-dark-card p-4"
+        >
+          <div className="flex items-center justify-between">
+              <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-8 w-auto"/>
+              <div 
+                  className="flex items-center space-x-3 cursor-pointer"
+                  onClick={() => setIsProfileModalOpen(true)}
+                  role="button"
+                  aria-label="Abrir perfil do usuário"
+              >
+                  <div>
+                    <h1 className="text-md font-semibold text-right text-dark dark:text-dark-text">Olá, {user.full_name?.split(' ')[0]}!</h1>
+                    <p className="text-xs text-right text-gray-500 dark:text-dark-subtext">Seja bem vindo(a)</p>
+                  </div>
+                  <img src={user.profile_pic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-primary" />
+              </div>
+          </div>
+        </header>
+        
+        <DayNavigator selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
+      </div>
 
       <div className="p-1">
         <div className="flex justify-between items-center mb-4">
@@ -128,6 +137,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
                   appointment={app} 
                   patient={patient}
                   onStatusChange={(status) => updateAppointmentStatus(app.id, status)}
+                  onClick={() => setEditingAppointment(app)}
                 />
               ) : null;
             })}
@@ -145,6 +155,17 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
           patients={patients}
           addAppointment={addAppointment}
           selectedDate={selectedDateString}
+        />
+      )}
+
+      {editingAppointment && (
+        <EditAppointmentModal
+            isOpen={!!editingAppointment}
+            onClose={() => setEditingAppointment(null)}
+            appointment={editingAppointment}
+            patient={patients.find(p => p.id === editingAppointment.patient_id)!}
+            updateAppointment={updateAppointmentDetails}
+            deleteAppointment={deleteAppointment}
         />
       )}
       

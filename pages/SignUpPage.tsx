@@ -44,10 +44,11 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-light dark:bg-dark-bg">
+    <div className="min-h-screen flex items-center justify-center bg-light dark:bg-dark-bg px-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
         <div className="text-center">
-            <h1 className="text-3xl font-bold text-primary">Crie sua Conta</h1>
+            <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
+            <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
             <p className="text-gray-500 dark:text-dark-subtext">É rápido e fácil.</p>
         </div>
         

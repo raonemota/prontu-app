@@ -61,4 +61,5 @@ export interface Appointment {
   date: string; // "YYYY-MM-DD"
   time: string; // "HH:MM"
   status: AppointmentStatus;
+  observation?: string | null;
 }

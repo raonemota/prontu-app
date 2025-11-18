@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, Gender, Category, Clinic } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
+import { TrashIcon } from './icons/TrashIcon';
+import { CheckIcon } from './icons/CheckIcon';
+
 
 interface AddPatientModalProps {
   isOpen: boolean;
@@ -9,6 +12,7 @@ interface AddPatientModalProps {
   updatePatient: (patientId: number, patient: Omit<Patient, 'id' | 'profile_pic' | 'user_id' | 'clinics'>) => void;
   patientToEdit: Patient | null;
   clinics: Clinic[];
+  onDelete: (patientId: number) => Promise<boolean>;
 }
 
 const weekDays = [
@@ -21,7 +25,7 @@ const weekDays = [
   { label: 'Sáb', value: 6 },
 ];
 
-const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics }) => {
+const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDelete }) => {
   const [formData, setFormData] = useState({
     name: '',
     gender: Gender.Female,
@@ -92,6 +96,15 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     onClose();
   };
   
+  const handleDelete = async () => {
+    if (patientToEdit && window.confirm("Tem certeza que deseja excluir este paciente? Ele será removido da lista ativa, mas seu histórico de atendimentos será mantido.")) {
+      const success = await onDelete(patientToEdit.id);
+      if (success) {
+        onClose();
+      }
+    }
+  };
+
   const inputStyles = "mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
@@ -155,9 +168,29 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
                 ))}
               </div>
             </div>
-            <div className="pt-4 flex justify-end space-x-3">
-              <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium">Cancelar</button>
-              <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg font-medium">{patientToEdit ? 'Salvar Alterações' : 'Salvar Paciente'}</button>
+            <div className="pt-4 flex justify-between items-center">
+              <div>
+                {patientToEdit && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-100 text-danger rounded-lg font-medium flex items-center space-x-2 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/80 transition-colors"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                    <span>Excluir</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium flex items-center space-x-2">
+                  <CloseIcon className="w-5 h-5" />
+                  <span>Cancelar</span>
+                </button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center space-x-2">
+                  <CheckIcon className="w-5 h-5" />
+                  <span>{patientToEdit ? 'Salvar' : 'Adicionar'}</span>
+                </button>
+              </div>
             </div>
           </form>
         </div>

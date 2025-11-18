@@ -5,6 +5,7 @@ interface AppointmentCardProps {
   appointment: Appointment;
   patient: Patient;
   onStatusChange: (status: AppointmentStatus) => void;
+  onClick: () => void;
 }
 
 const statusColors: Record<AppointmentStatus, string> = {
@@ -14,14 +15,20 @@ const statusColors: Record<AppointmentStatus, string> = {
   [AppointmentStatus.Canceled]: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
 };
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient, onStatusChange }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient, onStatusChange, onClick }) => {
   return (
-    <div className="flex items-center space-x-3 p-3 bg-white dark:bg-dark-card rounded-xl shadow-md">
+    <div 
+      className="flex items-center space-x-3 p-3 bg-white dark:bg-dark-card rounded-xl shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+    >
       <img src={patient.profile_pic} alt={patient.name} className="w-10 h-10 rounded-full object-cover" />
       <div className="flex-grow">
         <p className="font-semibold text-sm text-dark dark:text-dark-text">{patient.name}</p>
         <div className="flex items-center text-xs text-gray-500 dark:text-dark-subtext space-x-2">
-            <span>{appointment.time}</span>
+            <span>{patient.health_plan}</span>
             {patient.clinics?.name && (
                 <>
                     <span className="text-gray-300 dark:text-dark-border">•</span>
@@ -34,6 +41,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
         <select
           value={appointment.status}
           onChange={(e) => onStatusChange(e.target.value as AppointmentStatus)}
+          onClick={(e) => e.stopPropagation()}
           className={`text-xs font-medium border-none rounded-lg focus:ring-2 focus:ring-primary py-1 px-2 appearance-none ${statusColors[appointment.status]}`}
         >
           {Object.values(AppointmentStatus).map(status => (

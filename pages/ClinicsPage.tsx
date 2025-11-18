@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Clinic } from '../types';
+import { Clinic, Page } from '../types';
 import AddClinicModal from '../components/AddClinicModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
+import SubPageHeader from '../components/SubPageHeader';
+import { BuildingIcon } from '../components/icons/BuildingIcon';
 
 interface ClinicsPageProps {
   clinics: Clinic[];
   addClinic: (clinic: Omit<Clinic, 'id' | 'user_id'>) => void;
   updateClinic: (clinicId: number, clinic: Omit<Clinic, 'id' | 'user_id'>) => void;
   deleteClinic: (clinicId: number) => void;
+  setActivePage: (page: Page) => void;
 }
 
-const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateClinic, deleteClinic }) => {
+const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateClinic, deleteClinic, setActivePage }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clinicToEdit, setClinicToEdit] = useState<Clinic | null>(null);
 
@@ -32,14 +35,26 @@ const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateCli
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-dark dark:text-dark-text">Minhas Clínicas</h1>
+      <SubPageHeader 
+        title="Minhas Clínicas" 
+        onBack={() => setActivePage(Page.Home)}
+      >
+        <button onClick={() => handleOpenModal()} className="p-2 bg-primary/10 text-primary rounded-full" aria-label="Adicionar Clínica">
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      </SubPageHeader>
       
       <div className="space-y-3">
         {clinics.map(clinic => (
           <div key={clinic.id} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md flex justify-between items-center">
-            <div>
-              <p className="font-semibold text-dark dark:text-dark-text">{clinic.name}</p>
-              <p className="text-sm text-gray-500 dark:text-dark-subtext">{clinic.address}</p>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <BuildingIcon className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-dark dark:text-dark-text">{clinic.name}</p>
+                <p className="text-sm text-gray-500 dark:text-dark-subtext">{clinic.address}</p>
+              </div>
             </div>
             <div className="flex space-x-2">
               <button onClick={() => handleOpenModal(clinic)} className="text-primary hover:underline text-sm font-medium">Editar</button>
@@ -51,14 +66,6 @@ const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateCli
           <p className="text-center text-gray-500 dark:text-dark-subtext py-8">Nenhuma clínica cadastrada. Adicione sua primeira clínica para começar.</p>
         )}
       </div>
-
-      <button
-        onClick={() => handleOpenModal()}
-        className="fixed bottom-24 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition-colors"
-        aria-label="Nova Clínica"
-      >
-        <PlusIcon className="w-6 h-6" />
-      </button>
 
       {isModalOpen && (
         <AddClinicModal

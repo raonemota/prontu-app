@@ -27,11 +27,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-light dark:bg-dark-bg">
+    <div className="min-h-screen flex items-center justify-center bg-light dark:bg-dark-bg px-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
         <div className="text-center">
-            <h1 className="text-3xl font-bold text-primary">Prontu</h1>
-            <p className="text-gray-500 dark:text-dark-subtext">Acesse sua conta</p>
+            <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
+            <p className="text-gray-500 dark:text-dark-subtext mt-4">Acesse sua conta</p>
         </div>
         
         {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}
