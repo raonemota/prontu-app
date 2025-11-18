@@ -5,6 +5,7 @@ export enum Page {
   Patients = 'Patients',
   Reports = 'Reports',
   Clinics = 'Clinics',
+  DeactivatedPatients = 'DeactivatedPatients',
 }
 
 export enum AppointmentStatus {

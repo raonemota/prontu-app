@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Appointment, Patient, AppointmentStatus, User } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
@@ -5,9 +6,11 @@ import AddAppointmentModal from '../components/AddAppointmentModal';
 import EditAppointmentModal from '../components/EditAppointmentModal';
 import { ProfileModal } from '../components/ProfileModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
+import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
 
 interface HomePageProps {
   patients: Patient[];
+  allPatients: Patient[];
   appointments: Appointment[];
   updateAppointmentStatus: (appointmentId: number, status: AppointmentStatus) => void;
   updateAppointmentDetails: (appointmentId: number, updatedDetails: { date: string, time: string, status: AppointmentStatus, observation: string | null }) => void;
@@ -40,11 +43,18 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
         <div className="bg-white dark:bg-dark-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <button onClick={() => changeDay(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&lt;</button>
-                <div className="text-center">
+                <div className="flex items-center space-x-2">
                     <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
                         {monthNames[selectedDate.getMonth()]} de {selectedDate.getFullYear()}
                     </h2>
-                    <button onClick={() => setSelectedDate(new Date())} className="text-xs font-semibold text-primary hover:underline">Ir para hoje</button>
+                    <button 
+                        onClick={() => setSelectedDate(new Date())} 
+                        className="p-1 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                        aria-label="Ir para hoje"
+                        title="Ir para hoje"
+                    >
+                        <CalendarTodayIcon className="w-5 h-5" />
+                    </button>
                 </div>
                 <button onClick={() => changeDay(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&gt;</button>
             </div>
@@ -70,7 +80,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
 };
 
 
-const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme }) => {
+const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
@@ -81,16 +91,24 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
   const dailyAppointments = useMemo(() => {
     return appointments
       .filter(app => app.date === selectedDateString)
-      .sort((a, b) => a.time.localeCompare(b.time));
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [appointments, selectedDateString]);
   
   const handleSaveProfile = (updatedUser: Omit<User, 'id' | 'plan'>) => {
     updateUser(updatedUser);
   };
+  
+  const editingAppointmentPatient = useMemo(() => {
+    if (!editingAppointment) return null;
+    return allPatients.find(p => p.id === editingAppointment.patient_id) || null;
+  }, [editingAppointment, allPatients]);
+  
+  const userFirstName = (user.full_name || 'Usuário').split(' ')[0];
+  const userProfilePic = user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
 
   return (
     <div className="space-y-6">
-      <div className="-mx-4 -mt-4 shadow-lg rounded-b-3xl overflow-hidden">
+      <div className="sticky top-0 z-40 -mx-4 -mt-4 shadow-lg rounded-b-3xl overflow-hidden">
         <header 
           className="bg-white dark:bg-dark-card p-4"
         >
@@ -103,10 +121,10 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
                   aria-label="Abrir perfil do usuário"
               >
                   <div>
-                    <h1 className="text-md font-semibold text-right text-dark dark:text-dark-text">Olá, {user.full_name?.split(' ')[0]}!</h1>
+                    <h1 className="text-md font-semibold text-right text-dark dark:text-dark-text">Olá, {userFirstName}!</h1>
                     <p className="text-xs text-right text-gray-500 dark:text-dark-subtext">Seja bem vindo(a)</p>
                   </div>
-                  <img src={user.profile_pic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-primary" />
+                  <img src={userProfilePic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-primary" />
               </div>
           </div>
         </header>
@@ -130,7 +148,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
         {dailyAppointments.length > 0 ? (
           <div className="space-y-3">
             {dailyAppointments.map(app => {
-              const patient = patients.find(p => p.id === app.patient_id);
+              const patient = allPatients.find(p => p.id === app.patient_id);
               return patient ? (
                 <AppointmentCard 
                   key={app.id} 
@@ -158,12 +176,12 @@ const HomePage: React.FC<HomePageProps> = ({ patients, appointments, updateAppoi
         />
       )}
 
-      {editingAppointment && (
+      {editingAppointment && editingAppointmentPatient && (
         <EditAppointmentModal
             isOpen={!!editingAppointment}
             onClose={() => setEditingAppointment(null)}
             appointment={editingAppointment}
-            patient={patients.find(p => p.id === editingAppointment.patient_id)!}
+            patient={editingAppointmentPatient}
             updateAppointment={updateAppointmentDetails}
             deleteAppointment={deleteAppointment}
         />

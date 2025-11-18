@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 
@@ -9,7 +10,7 @@ interface SubPageHeaderProps {
 
 const SubPageHeader: React.FC<SubPageHeaderProps> = ({ title, onBack, children }) => {
   return (
-    <header className="flex items-center justify-between bg-white dark:bg-dark-card shadow-md -mx-4 -mt-4 mb-6 p-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between bg-white dark:bg-dark-card shadow-md -mx-4 -mt-4 mb-6 p-4">
       <div className="flex items-center space-x-3">
         <button 
           onClick={onBack} 

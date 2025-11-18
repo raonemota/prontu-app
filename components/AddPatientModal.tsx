@@ -12,7 +12,7 @@ interface AddPatientModalProps {
   updatePatient: (patientId: number, patient: Omit<Patient, 'id' | 'profile_pic' | 'user_id' | 'clinics'>) => void;
   patientToEdit: Patient | null;
   clinics: Clinic[];
-  onDelete: (patientId: number) => Promise<boolean>;
+  onDeactivate: (patientId: number) => Promise<boolean>;
 }
 
 const weekDays = [
@@ -25,7 +25,7 @@ const weekDays = [
   { label: 'Sáb', value: 6 },
 ];
 
-const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDelete }) => {
+const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDeactivate }) => {
   const [formData, setFormData] = useState({
     name: '',
     gender: Gender.Female,
@@ -36,19 +36,20 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     clinic_id: null as number | null,
   });
   const [appointment_days, setAppointmentDays] = useState<number[]>([]);
+  const [isConfirmingDeactivation, setIsConfirmingDeactivation] = useState(false);
 
   useEffect(() => {
     if (patientToEdit) {
       setFormData({
-        name: patientToEdit.name,
-        gender: patientToEdit.gender,
-        health_plan: patientToEdit.health_plan,
-        category: patientToEdit.category,
-        session_value: String(patientToEdit.session_value),
-        appointment_time: patientToEdit.appointment_time,
-        clinic_id: patientToEdit.clinic_id,
+        name: patientToEdit.name || '',
+        gender: patientToEdit.gender || Gender.Female,
+        health_plan: patientToEdit.health_plan || '',
+        category: patientToEdit.category || Category.Adult,
+        session_value: String(patientToEdit.session_value || ''),
+        appointment_time: patientToEdit.appointment_time || '09:00',
+        clinic_id: patientToEdit.clinic_id || null,
       });
-      setAppointmentDays(patientToEdit.appointment_days);
+      setAppointmentDays(Array.isArray(patientToEdit.appointment_days) ? patientToEdit.appointment_days : []);
     } else {
       // Reset form for "add new" mode
       setFormData({
@@ -62,7 +63,9 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
       });
       setAppointmentDays([]);
     }
-  }, [patientToEdit]);
+     // Reset confirmation state when modal opens/changes patient
+    setIsConfirmingDeactivation(false);
+  }, [patientToEdit, isOpen]);
 
   const handleDayToggle = (dayValue: number) => {
     setAppointmentDays(prev =>
@@ -81,11 +84,15 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
         alert("Por favor, selecione pelo menos um dia de atendimento.");
         return;
     }
+
+    const clinicIdValue = formData.clinic_id ? parseInt(String(formData.clinic_id), 10) : null;
+    
     const submissionData = {
         ...formData,
         session_value: parseFloat(formData.session_value) || 0,
         appointment_days,
-        clinic_id: formData.clinic_id ? parseInt(String(formData.clinic_id)) : null
+        // Ensure clinic_id is a valid number or null, never NaN
+        clinic_id: isNaN(clinicIdValue as number) ? null : clinicIdValue,
     };
 
     if (patientToEdit) {
@@ -96,11 +103,24 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     onClose();
   };
   
-  const handleDelete = async () => {
-    if (patientToEdit && window.confirm("Tem certeza que deseja excluir este paciente? Ele será removido da lista ativa, mas seu histórico de atendimentos será mantido.")) {
-      const success = await onDelete(patientToEdit.id);
+  const handleDeactivateClick = () => {
+    if (patientToEdit) {
+      console.log(`[handleDeactivateClick] Botão Desativar clicado para o paciente ID: ${patientToEdit.id}`);
+      setIsConfirmingDeactivation(true); // Open the custom confirmation modal
+    }
+  };
+
+  const handleConfirmDeactivation = async () => {
+    if (patientToEdit) {
+      console.log(`[handleConfirmDeactivation] Usuário confirmou no modal customizado. Chamando onDeactivate...`);
+      const success = await onDeactivate(patientToEdit.id);
       if (success) {
-        onClose();
+        console.log(`[handleConfirmDeactivation] onDeactivate retornou sucesso. Fechando o modal.`);
+        setIsConfirmingDeactivation(false); // Close confirmation modal
+        onClose(); // Close main modal
+      } else {
+        console.error(`[handleConfirmDeactivation] onDeactivate retornou falha. O modal de confirmação será fechado, mas o principal permanecerá aberto.`);
+        setIsConfirmingDeactivation(false); // Close confirmation modal on failure to allow retry
       }
     }
   };
@@ -112,7 +132,34 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
+        
+        {isConfirmingDeactivation && patientToEdit && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-dark-card/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-dark dark:text-dark-text">Confirmar Desativação</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-dark-subtext">
+                Tem certeza que deseja desativar o paciente <strong className="text-primary">{patientToEdit.name || 'sem nome'}</strong>?
+              </p>
+              <p className="mt-1 text-xs text-gray-500">O histórico será mantido.</p>
+            </div>
+            <div className="mt-6 flex w-full justify-center space-x-4">
+              <button
+                onClick={() => setIsConfirmingDeactivation(false)}
+                className="px-6 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDeactivation}
+                className="px-6 py-2 bg-danger text-white rounded-lg font-medium"
+              >
+                Sim, Desativar
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-dark dark:text-dark-text">{patientToEdit ? 'Editar Paciente' : 'Novo Paciente'}</h2>
@@ -173,11 +220,11 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
                 {patientToEdit && (
                   <button
                     type="button"
-                    onClick={handleDelete}
+                    onClick={handleDeactivateClick}
                     className="px-4 py-2 bg-red-100 text-danger rounded-lg font-medium flex items-center space-x-2 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/80 transition-colors"
                   >
                     <TrashIcon className="w-5 h-5" />
-                    <span>Excluir</span>
+                    <span>Desativar</span>
                   </button>
                 )}
               </div>

@@ -1,8 +1,10 @@
+
 import React, { useState, useMemo } from 'react';
 import { Patient, Category, Clinic, Page } from '../types';
 import PatientListItem from '../components/PatientListItem';
 import AddPatientModal from '../components/AddPatientModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
+import { ArchiveBoxIcon } from '../components/icons/ArchiveBoxIcon';
 import SubPageHeader from '../components/SubPageHeader';
 
 interface PatientsPageProps {
@@ -22,7 +24,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
 
   const filteredPatients = useMemo(() => {
     return patients.filter(patient => {
-      const matchesSearch = patient.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (patient.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = categoryFilter === 'all' || patient.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
@@ -43,16 +45,20 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
     setIsModalOpen(false);
   };
 
-  const handleDeletePatient = async (patientId: number): Promise<boolean> => {
-      return await deactivatePatient(patientId);
-  };
-
   return (
     <div className="space-y-6">
       <SubPageHeader 
         title="Pacientes" 
         onBack={() => setActivePage(Page.Home)}
       >
+        <button 
+          onClick={() => setActivePage(Page.DeactivatedPatients)} 
+          className="p-2 bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-dark-subtext rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" 
+          aria-label="Ver Pacientes Desativados"
+          title="Pacientes Desativados"
+        >
+          <ArchiveBoxIcon className="w-6 h-6" />
+        </button>
         <button onClick={handleOpenAddModal} className="p-2 bg-primary/10 text-primary rounded-full" aria-label="Adicionar Paciente">
           <PlusIcon className="w-6 h-6" />
         </button>
@@ -109,7 +115,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
           updatePatient={updatePatient}
           patientToEdit={patientToEdit}
           clinics={clinics}
-          onDelete={handleDeletePatient}
+          onDeactivate={deactivatePatient}
         />
       )}
     </div>

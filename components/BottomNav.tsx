@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Page } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
@@ -19,7 +20,7 @@ const NavItem: React.FC<{ icon: React.ReactNode; label: string; isActive: boolea
 
 const BottomNav: React.FC<BottomNavProps> = ({ activePage, setActivePage }) => {
   return (
-    <nav className="absolute bottom-0 left-0 right-0 h-20 bg-white dark:bg-dark-card shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] flex justify-around items-center border-t border-gray-200 dark:border-dark-border">
+    <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[800px] h-20 bg-white dark:bg-dark-card shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] flex justify-around items-center border-t border-gray-200 dark:border-dark-border z-50">
       <NavItem
         icon={<HomeIcon className="w-6 h-6 mb-1" />}
         label="Home"

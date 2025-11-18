@@ -1,20 +1,23 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Appointment, Patient, AppointmentStatus, Page, Clinic, User } from '../types';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import SubPageHeader from '../components/SubPageHeader';
 import { DocumentArrowDownIcon } from '../components/icons/DocumentArrowDownIcon';
+import { EyeIcon } from '../components/icons/EyeIcon';
+import { EyeSlashIcon } from '../components/icons/EyeSlashIcon';
 
 declare const jspdf: any;
 
 interface ReportsPageProps {
-  patients: Patient[];
+  allPatients: Patient[];
   appointments: Appointment[];
   clinics: Clinic[];
   user: User;
   setActivePage: (page: Page) => void;
 }
 
-const ReportsPage: React.FC<ReportsPageProps> = ({ patients, appointments, clinics, user, setActivePage }) => {
+const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, clinics, user, setActivePage }) => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -22,94 +25,175 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ patients, appointments, clini
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedClinicId, setSelectedClinicId] = useState<number | 'all'>('all');
+  const [showValues, setShowValues] = useState(true);
+  
+  // Infinite Scroll State
+  const [displayCount, setDisplayCount] = useState(10);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
-  const filteredData = useMemo(() => {
-    const filteredAppointments = appointments.filter(app => {
-      const appDate = new Date(app.date);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      start.setHours(0,0,0,0);
-      end.setHours(23,59,59,999);
-      return appDate >= start && appDate <= end;
-    });
+  // Process data to be Grouped by Date
+  const groupedReport = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0,0,0,0);
+    end.setHours(23,59,59,999);
 
-    const patientReport: { [key: string]: { patient: Patient; attendedDates: string[]; totalValue: number, clinicName: string } } = {};
+    const filteredApps = appointments.filter(app => {
+        if (!app.date) return false;
+        const appDate = new Date(app.date);
+        if (isNaN(appDate.getTime())) return false;
+        
+        // Filter by Date Range
+        if (appDate < start || appDate > end) return false;
 
-    filteredAppointments.forEach(app => {
-      if (app.status === AppointmentStatus.Completed || app.status === AppointmentStatus.NoShow) {
-        const patient = patients.find(p => p.id === app.patient_id);
-        if (patient) {
-          const reportKey = `${patient.id}-${patient.clinic_id}`;
-          if (!patientReport[reportKey]) {
-            patientReport[reportKey] = { patient, attendedDates: [], totalValue: 0, clinicName: patient.clinics?.name || 'N/A' };
-          }
-          patientReport[reportKey].attendedDates.push(app.date);
-          patientReport[reportKey].totalValue += patient.session_value;
+        // Filter by Status (Only Completed or NoShow - usually only Completed generates revenue, but keeping logic consistent)
+        if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
+
+        // Filter by Clinic
+        if (selectedClinicId !== 'all') {
+            const patient = allPatients.find(p => p.id === app.patient_id);
+            if (!patient || patient.clinic_id !== selectedClinicId) return false;
         }
-      }
+
+        return true;
     });
 
-    return Object.values(patientReport).sort((a, b) => a.patient.name.localeCompare(b.patient.name) || a.clinicName.localeCompare(b.clinicName));
-  }, [startDate, endDate, appointments, patients]);
+    // Group by Date
+    const groups: { [date: string]: { date: string, totalValue: number, items: { patient: Patient, app: Appointment, clinicName: string }[] } } = {};
+
+    filteredApps.forEach(app => {
+        const patient = allPatients.find(p => p.id === app.patient_id);
+        if (patient) {
+            const dateKey = app.date;
+            if (!groups[dateKey]) {
+                groups[dateKey] = { date: dateKey, totalValue: 0, items: [] };
+            }
+            
+            const clinicName = patient.clinics?.name || 'N/A';
+            groups[dateKey].items.push({ patient, app, clinicName });
+            groups[dateKey].totalValue += patient.session_value || 0;
+        }
+    });
+
+    // Sort days chronologically
+    return Object.values(groups).sort((a, b) => a.date.localeCompare(b.date));
+  }, [startDate, endDate, appointments, allPatients, selectedClinicId]);
+
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(10);
+  }, [groupedReport]);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setDisplayCount(prev => prev + 10);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [observerTarget]);
+
+  // Slice data for display
+  const visibleGroups = groupedReport.slice(0, displayCount);
 
   const summary = useMemo(() => {
     let totalAppointments = 0;
     let totalToReceive = 0;
 
-    filteredData.forEach(item => {
-      totalAppointments += item.attendedDates.length;
-      totalToReceive += item.totalValue;
+    groupedReport.forEach(group => {
+      totalAppointments += group.items.length;
+      totalToReceive += group.totalValue;
     });
 
     return { totalAppointments, totalToReceive };
-  }, [filteredData]);
+  }, [groupedReport]);
   
   const handleGeneratePdf = () => {
-    exportToPDF(selectedClinicId);
-    setIsExportModalOpen(false);
-  };
-  
-  const exportToPDF = (clinicId: number | 'all') => {
     const { jsPDF } = jspdf;
     const doc = new jsPDF();
 
-    const dataForPdf = clinicId === 'all'
-      ? filteredData
-      : filteredData.filter(item => item.patient.clinic_id === clinicId);
-    
-    const clinicName = clinicId === 'all'
+    const clinicName = selectedClinicId === 'all'
       ? 'Todas as Clínicas'
-      : clinics.find(c => c.id === clinicId)?.name || 'N/A';
+      : clinics.find(c => c.id === selectedClinicId)?.name || 'N/A';
 
     doc.setFont("helvetica", "bold");
     doc.text("Relatório de Atendimentos", 14, 20);
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     
-    doc.text(`Profissional: ${user.full_name}`, 14, 28);
+    doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 28);
     doc.text(`Clínica: ${clinicName}`, 14, 36);
 
     const formattedStartDate = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR');
     const formattedEndDate = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR');
     doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 14, 44);
+    doc.text(`Total a Receber: ${summary.totalToReceive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
+
+    // Aggregate data by Patient for PDF
+    const patientsMap: { [key: number]: { name: string, clinic: string, dates: string[], total: number } } = {};
+
+    // Iterate over the groupedReport which already has filtered data
+    groupedReport.forEach(group => {
+        group.items.forEach(item => {
+            if (!patientsMap[item.patient.id]) {
+                patientsMap[item.patient.id] = {
+                    name: item.patient.name || 'Nome não informado',
+                    clinic: item.clinicName,
+                    dates: [],
+                    total: 0
+                };
+            }
+            const fullFormattedDate = new Date(group.date + 'T00:00:00').toLocaleDateString('pt-BR');
+            // Avoid duplicate dates if multiple appointments on same day (though usually blocked)
+            if (!patientsMap[item.patient.id].dates.includes(fullFormattedDate)) {
+                patientsMap[item.patient.id].dates.push(fullFormattedDate);
+            }
+            patientsMap[item.patient.id].total += (item.patient.session_value || 0);
+        });
+    });
+
+    const tableBody = Object.values(patientsMap).map(p => [
+        p.name,
+        p.clinic,
+        p.dates.sort((a,b) => {
+             // Simple sort for DD/MM/YYYY strings if needed, or rely on input order
+             const [d1, m1, y1] = a.split('/').map(Number);
+             const [d2, m2, y2] = b.split('/').map(Number);
+             return new Date(y1, m1-1, d1).getTime() - new Date(y2, m2-1, d2).getTime();
+        }).join(' | '),
+        p.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    ]);
 
     doc.autoTable({
-        startY: 50,
-        head: [['Paciente', 'Datas de Atendimento']],
-        body: dataForPdf.map(item => [
-            item.patient.name,
-            item.attendedDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')).join(' | ')
-        ]),
+        startY: 60,
+        head: [['Paciente', 'Clínica', 'Datas dos Atendimentos', 'Valor Total']],
+        body: tableBody,
         theme: 'striped',
-        headStyles: { fillColor: [122, 58, 255], fontSize: 9 },
-        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [122, 58, 255], fontSize: 10 },
+        styles: { fontSize: 9, cellPadding: 3 },
         columnStyles: {
-            0: { cellWidth: 50 },
-            1: { cellWidth: 'auto' }
+            0: { cellWidth: 40 }, // Paciente
+            1: { cellWidth: 30 }, // Clinica
+            2: { cellWidth: 'auto' }, // Datas
+            3: { cellWidth: 30, halign: 'right' } // Valor
         }
     });
     
-    doc.save(`relatorio_${startDate}_${endDate}_${clinicName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`relatorio_${startDate}_${endDate}.pdf`);
+    setIsExportModalOpen(false);
   };
 
   const formatDateForDisplay = (dateString: string) => {
@@ -117,27 +201,44 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ patients, appointments, clini
     return date.toLocaleDateString('pt-BR');
   };
 
+  const formatDayOfWeek = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return days[date.getDay()];
+  };
+  
+  const formatCurrency = (value: number) => {
+    if (!showValues) return 'R$ ****';
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <SubPageHeader
         title="Relatórios"
         onBack={() => setActivePage(Page.Home)}
       >
+        <button 
+            onClick={() => setShowValues(!showValues)} 
+            className="p-2 bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-dark-subtext rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            aria-label={showValues ? "Ocultar valores" : "Mostrar valores"}
+        >
+            {showValues ? <EyeIcon className="w-6 h-6" /> : <EyeSlashIcon className="w-6 h-6" />}
+        </button>
         <button onClick={() => setIsExportModalOpen(true)} className="p-2 bg-secondary/10 text-secondary rounded-full" aria-label="Exportar PDF">
             <DocumentArrowDownIcon className="w-6 h-6" />
         </button>
       </SubPageHeader>
 
-      <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md space-y-4">
-        <h2 className="font-semibold text-dark dark:text-dark-text">Filtrar por Período</h2>
+      <div className="bg-white dark:bg-dark-card p-3 rounded-xl shadow-md space-y-2">
         <div className="flex flex-wrap justify-center items-start gap-4">
           
           <div className="flex-shrink-0">
             <label htmlFor="startDateInput" className="block text-center text-xs font-medium text-gray-500 dark:text-dark-subtext mb-1">DATA INICIAL</label>
             <div className="relative w-40">
-              <div className="flex items-center justify-between px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text">
+              <div className="flex items-center justify-between px-3 py-1.5 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text text-sm">
                   <span>{formatDateForDisplay(startDate)}</span>
-                  <CalendarIcon className="w-5 h-5 text-gray-400" />
+                  <CalendarIcon className="w-4 h-4 text-gray-400" />
               </div>
               <input
                 type="date"
@@ -153,9 +254,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ patients, appointments, clini
           <div className="flex-shrink-0">
             <label htmlFor="endDateInput" className="block text-center text-xs font-medium text-gray-500 dark:text-dark-subtext mb-1">DATA FINAL</label>
             <div className="relative w-40">
-              <div className="flex items-center justify-between px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text">
+              <div className="flex items-center justify-between px-3 py-1.5 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text text-sm">
                   <span>{formatDateForDisplay(endDate)}</span>
-                  <CalendarIcon className="w-5 h-5 text-gray-400" />
+                  <CalendarIcon className="w-4 h-4 text-gray-400" />
               </div>
               <input
                 type="date"
@@ -170,46 +271,64 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ patients, appointments, clini
         </div>
       </div>
 
-      <div className="bg-primary p-4 rounded-xl shadow-md text-white">
-          <div className="flex justify-between items-center mb-2">
-              <span className="font-bold text-lg">Atendimentos</span>
-              <span className="font-medium">{summary.totalAppointments} Atendimentos</span>
+      <div className="bg-primary p-3 rounded-xl shadow-md text-white">
+          <div className="flex justify-between items-center mb-1">
+              <span className="font-bold text-base">Atendimentos</span>
+              <span className="font-medium text-sm">{summary.totalAppointments} Atendimentos</span>
           </div>
           <div className="flex justify-between items-center">
-              <span className="font-bold text-lg">Valores à receber</span>
-              <span className="font-medium">
-                  {summary.totalToReceive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              <span className="font-bold text-base">Valores à receber</span>
+              <span className="font-medium text-base">
+                  {formatCurrency(summary.totalToReceive)}
               </span>
           </div>
       </div>
       
-      <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md">
-        <h2 className="font-semibold text-dark dark:text-dark-text mb-4">Resumo por Paciente</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-dark-border">
-                <th className="p-2 text-dark dark:text-dark-text">Paciente</th>
-                <th className="p-2 text-dark dark:text-dark-text">Clínica</th>
-                <th className="p-2 text-dark dark:text-dark-text">Atendidos</th>
-                <th className="p-2 text-dark dark:text-dark-text">Total (R$)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map(item => (
-                <tr key={`${item.patient.id}-${item.patient.clinic_id}`} className="border-b border-gray-200 dark:border-dark-border">
-                  <td className="p-2 font-medium text-dark dark:text-dark-text">{item.patient.name}</td>
-                  <td className="p-2 text-gray-600 dark:text-dark-subtext">{item.clinicName}</td>
-                  <td className="p-2 text-gray-600 dark:text-dark-subtext">{item.attendedDates.length}</td>
-                  <td className="p-2 font-medium text-secondary">{item.totalValue.toFixed(2).replace('.', ',')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredData.length === 0 && (
-            <p className="text-center text-gray-500 dark:text-dark-subtext py-4">Nenhum atendimento concluído no período selecionado.</p>
-          )}
-        </div>
+      <div className="space-y-4">
+        <h2 className="font-semibold text-lg text-dark dark:text-dark-text px-1">Relatório Diário</h2>
+        
+        {visibleGroups.map((group) => (
+            <div key={group.date} className="bg-white dark:bg-dark-card rounded-xl shadow-md overflow-hidden">
+                <div className="bg-gray-100 dark:bg-dark-border px-4 py-1.5 flex justify-between items-center border-b border-gray-200 dark:border-dark-border">
+                    <div>
+                        <p className="font-bold text-dark dark:text-dark-text text-sm">{formatDateForDisplay(group.date)}</p>
+                        <p className="text-xs text-gray-500 dark:text-dark-subtext capitalize">{formatDayOfWeek(group.date)}</p>
+                    </div>
+                    <div className="text-right">
+                         <p className="text-[10px] text-gray-500 dark:text-dark-subtext uppercase tracking-wide">Total do dia</p>
+                         <p className="font-bold text-secondary text-sm">
+                            {formatCurrency(group.totalValue)}
+                         </p>
+                    </div>
+                </div>
+                <div className="divide-y divide-gray-100 dark:divide-dark-border">
+                    {group.items.map((item, index) => (
+                        <div key={index} className="px-4 py-1 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-dark-bg/30 transition-colors">
+                            <div>
+                                <p className="font-medium text-dark dark:text-dark-text text-sm">{item.patient.name || 'Nome não informado'}</p>
+                                <p className="text-xs text-gray-500 dark:text-dark-subtext">{item.clinicName}</p>
+                            </div>
+                            <p className="font-semibold text-dark dark:text-dark-text text-sm">
+                                {formatCurrency(item.patient.session_value || 0)}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        ))}
+
+        {/* Sentinel element for Infinite Scroll */}
+        {visibleGroups.length < groupedReport.length && (
+            <div ref={observerTarget} className="py-4 text-center">
+                 <p className="text-gray-500 dark:text-dark-subtext text-sm">Carregando mais dias...</p>
+            </div>
+        )}
+
+        {groupedReport.length === 0 && (
+            <div className="bg-white dark:bg-dark-card p-8 rounded-xl shadow-md text-center">
+                <p className="text-gray-500 dark:text-dark-subtext">Nenhum atendimento concluído no período selecionado.</p>
+            </div>
+        )}
       </div>
 
       {isExportModalOpen && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
 import PatientsPage from './pages/PatientsPage';
@@ -9,6 +9,7 @@ import SignUpPage from './pages/SignUpPage';
 import BottomNav from './components/BottomNav';
 import { supabase } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
+import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
 
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
@@ -22,12 +23,20 @@ const getErrorMessage = (error: unknown): string => {
   return 'Ocorreu um erro desconhecido. Verifique o console para mais detalhes.';
 };
 
+// Helper function to safely get a sortable date
+const getSortableDate = (dateStr: string | null | undefined): number => {
+    if (!dateStr) return Infinity; // Put items with no date at the end
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? Infinity : date.getTime();
+}
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [activePage, setActivePage] = useState<Page>(Page.Home);
   
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [deactivatedPatients, setDeactivatedPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +81,7 @@ const App: React.FC = () => {
         fetchData(session.user.id);
       } else {
         setPatients([]);
+        setDeactivatedPatients([]);
         setAppointments([]);
         setUserProfile(null);
         setClinics([]);
@@ -113,10 +123,19 @@ const App: React.FC = () => {
               .from('patients')
               .select('*, clinics(name)')
               .eq('user_id', userId)
-              .eq('is_active', true) // Only fetch active patients
+              .eq('is_active', true) 
               .order('name');
           if (patientsError) throw patientsError;
           setPatients(patientsData as Patient[] || []);
+
+          const { data: deactivatedPatientsData, error: deactivatedPatientsError } = await supabase
+              .from('patients')
+              .select('*, clinics(name)')
+              .eq('user_id', userId)
+              .eq('is_active', false)
+              .order('name');
+          if (deactivatedPatientsError) throw deactivatedPatientsError;
+          setDeactivatedPatients(deactivatedPatientsData as Patient[] || []);
 
           const { data: appointmentsData, error: appointmentsError } = await supabase
               .from('appointments')
@@ -197,32 +216,45 @@ const App: React.FC = () => {
 
   const deactivatePatient = async (patientId: number): Promise<boolean> => {
     try {
-      const { data, error } = await supabase
-        .from('patients')
-        .update({ is_active: false })
-        .eq('id', patientId)
-        .select(); // Use .select() to get a confirmation and trigger RLS errors reliably.
-
-      if (error) {
-        // Handle errors returned by the Supabase API (e.g., RLS violations)
-        throw error;
-      }
-
-      // Handle cases where RLS might prevent the update silently (no error, but no data returned)
-      if (!data || data.length === 0) {
-        throw new Error("A operação falhou. O paciente não foi encontrado ou as permissões de segurança (RLS) impediram a atualização.");
+      const { error } = await supabase.rpc('deactivate_patient_for_user', {
+        patient_id_to_deactivate: patientId
+      });
+      if (error) throw error;
+      
+      const patientToMove = patients.find(p => p.id === patientId);
+      if (patientToMove) {
+        setPatients(prev => prev.filter(p => p.id !== patientId));
+        setDeactivatedPatients(prev => [...prev, patientToMove].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
       }
       
-      // If successful, update local state and notify the user
-      setPatients(prev => prev.filter(p => p.id !== patientId));
-      alert("Paciente excluído com sucesso!");
+      alert("Paciente desativado com sucesso!");
       return true;
 
     } catch (error: unknown) {
-      // Catch both thrown Supabase errors and other exceptions
       const errorMessage = getErrorMessage(error);
-      console.error("Erro detalhado ao desativar paciente:", errorMessage);
-      alert(`Falha ao excluir o paciente: ${errorMessage}\n\nPor favor, verifique as permissões de segurança (RLS) na sua tabela 'patients' no Supabase.`);
+      alert(`Falha ao desativar o paciente: ${errorMessage}`);
+      return false;
+    }
+  };
+  
+  const activatePatient = async (patientId: number): Promise<boolean> => {
+    try {
+      const { error } = await supabase.rpc('activate_patient_for_user', {
+        patient_id_to_activate: patientId
+      });
+      if (error) throw error;
+
+      const patientToMove = deactivatedPatients.find(p => p.id === patientId);
+      if (patientToMove) {
+        setDeactivatedPatients(prev => prev.filter(p => p.id !== patientId));
+        setPatients(prev => [...prev, patientToMove].sort((a,b) => (a.name || '').localeCompare(b.name || '')));
+        alert("Paciente reativado com sucesso!");
+        return true;
+      }
+      return false;
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      alert(`Falha ao reativar o paciente: ${errorMessage}\n\nVerifique se a função 'activate_patient_for_user' foi criada no editor SQL do Supabase.`);
       return false;
     }
   };
@@ -231,6 +263,11 @@ const App: React.FC = () => {
       const newAppointments: Omit<Appointment, 'id'>[] = [];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      if (!Array.isArray(patient.appointment_days)) {
+        console.warn(`generateAppointmentsForPatient: patient.appointment_days is not an array for patient ID ${patient.id}. Skipping.`);
+        return;
+      }
 
       for (let i = 0; i < 90; i++) { // Generate for the next 3 months
           const date = new Date(today);
@@ -279,7 +316,7 @@ const App: React.FC = () => {
       console.error("Erro ao adicionar agendamento:", errorMessage);
       alert(`Erro ao adicionar agendamento: ${errorMessage}`);
     } else if (data) {
-      setAppointments(prev => [...prev, data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time)));
+      setAppointments(prev => [...prev, data].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
     }
   };
 
@@ -301,18 +338,33 @@ const App: React.FC = () => {
       console.error("Erro ao atualizar agendamento:", errorMessage);
       alert(`Erro ao atualizar agendamento: ${errorMessage}`);
     } else if (data) {
-      setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.time.localeCompare(b.time)));
+      setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)).sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
     }
   };
 
-  const deleteAppointment = async (appointmentId: number) => {
-    const { error } = await supabase.from('appointments').delete().eq('id', appointmentId);
-    if (error) {
-      const errorMessage = getErrorMessage(error);
-      console.error("Erro ao deletar agendamento:", errorMessage);
-      alert(`Erro ao deletar agendamento: ${errorMessage}`);
-    } else {
+  const deleteAppointment = async (appointmentId: number): Promise<boolean> => {
+    console.log(`[App.tsx] deleteAppointment: Tentando excluir agendamento ID: ${appointmentId}`);
+    try {
+      console.log(`[App.tsx] deleteAppointment: Chamando RPC 'delete_appointment_for_user'`);
+      const { error } = await supabase.rpc('delete_appointment_for_user', { 
+        appointment_id_to_delete: appointmentId 
+      });
+
+      if (error) {
+        console.error("[App.tsx] deleteAppointment: Erro retornado pelo RPC:", error);
+        throw error;
+      }
+      
+      console.log(`[App.tsx] deleteAppointment: RPC executado com sucesso. Atualizando estado.`);
       setAppointments(prev => prev.filter(app => app.id !== appointmentId));
+      alert('Agendamento excluído com sucesso!');
+      return true;
+
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      console.error(`[App.tsx] deleteAppointment: Falha na exclusão. Erro: ${errorMessage}`);
+      alert(`Erro ao deletar agendamento: ${errorMessage}\n\nVerifique se a função 'delete_appointment_for_user' foi criada no editor SQL do Supabase.`);
+      return false;
     }
   };
 
@@ -348,23 +400,8 @@ const App: React.FC = () => {
     else setClinics(prev => prev.filter(c => c.id !== clinicId));
   };
   
-  if (loading && !session) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
-            <p className="text-xl font-semibold text-primary">Carregando...</p>
-        </div>
-    );
-  }
+  const allPatients = useMemo(() => [...patients, ...deactivatedPatients], [patients, deactivatedPatients]);
   
-  if (!session) {
-      switch (activePage) {
-          case Page.SignUp:
-              return <SignUpPage setActivePage={setActivePage} />;
-          default:
-              return <LoginPage setActivePage={setActivePage} />;
-      }
-  }
-
   const renderPage = () => {
     if (loading || !userProfile) {
         return (
@@ -378,6 +415,7 @@ const App: React.FC = () => {
       case Page.Home:
         return <HomePage 
           patients={patients} 
+          allPatients={allPatients}
           appointments={appointments} 
           updateAppointmentStatus={updateAppointmentStatus}
           updateAppointmentDetails={updateAppointmentDetails}
@@ -392,7 +430,7 @@ const App: React.FC = () => {
         return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} deactivatePatient={deactivatePatient} clinics={clinics} setActivePage={setActivePage} />;
       case Page.Reports:
         return <ReportsPage 
-          patients={patients} 
+          allPatients={allPatients}
           appointments={appointments} 
           clinics={clinics}
           user={userProfile}
@@ -400,9 +438,16 @@ const App: React.FC = () => {
         />;
       case Page.Clinics:
         return <ClinicsPage clinics={clinics} addClinic={addClinic} updateClinic={updateClinic} deleteClinic={deleteClinic} setActivePage={setActivePage} />;
+      case Page.DeactivatedPatients:
+        return <DeactivatedPatientsPage
+          deactivatedPatients={deactivatedPatients}
+          activatePatient={activatePatient}
+          setActivePage={setActivePage}
+        />;
       default:
         return <HomePage 
           patients={patients} 
+          allPatients={allPatients}
           appointments={appointments} 
           updateAppointmentStatus={updateAppointmentStatus}
           updateAppointmentDetails={updateAppointmentDetails}
@@ -416,13 +461,33 @@ const App: React.FC = () => {
     }
   };
 
+  if (loading && !session) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
+            <p className="text-xl font-semibold text-primary">Carregando...</p>
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-black">
       <div className="w-full max-w-[800px] mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text">
-        <main className="p-4 pb-24">
-          {renderPage()}
-        </main>
-        <BottomNav activePage={activePage} setActivePage={setActivePage} />
+        {!session ? (
+            <div className="flex items-center justify-center min-h-screen px-4">
+              {activePage === Page.SignUp ? (
+                <SignUpPage setActivePage={setActivePage} />
+              ) : (
+                <LoginPage setActivePage={setActivePage} />
+              )}
+            </div>
+          ) : (
+            <>
+              <main className="p-4 pb-24">
+                {renderPage()}
+              </main>
+              <BottomNav activePage={activePage} setActivePage={setActivePage} />
+            </>
+          )}
       </div>
     </div>
   );

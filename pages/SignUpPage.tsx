@@ -44,66 +44,64 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-light dark:bg-dark-bg px-4">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
-        <div className="text-center">
-            <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
-            <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
-            <p className="text-gray-500 dark:text-dark-subtext">É rápido e fácil.</p>
-        </div>
-        
-        {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}
-        {message && <p className="text-center text-green-800 bg-green-100 dark:bg-green-900/50 dark:text-green-300 p-3 rounded-lg">{message}</p>}
-
-        <form onSubmit={handleSignUp} className="space-y-6">
-          <div>
-            <label className={labelStyles}>Nome Completo</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className={inputStyles}
-            />
-          </div>
-          <div>
-            <label className={labelStyles}>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className={inputStyles}
-            />
-          </div>
-          <div>
-            <label className={labelStyles}>Senha (mínimo 6 caracteres)</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className={inputStyles}
-            />
-          </div>
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 text-white bg-primary rounded-lg font-semibold hover:bg-purple-700 disabled:bg-purple-300 transition-colors"
-            >
-              {loading ? 'Criando...' : 'Criar Conta'}
-            </button>
-          </div>
-        </form>
-        <p className="text-center text-sm text-gray-600 dark:text-dark-subtext">
-            Já tem uma conta?{' '}
-            <button onClick={() => setActivePage(Page.Login)} className="font-medium text-primary hover:underline">
-                Faça login
-            </button>
-        </p>
+    <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
+      <div className="text-center">
+          <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
+          <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
+          <p className="text-gray-500 dark:text-dark-subtext">É rápido e fácil.</p>
       </div>
+      
+      {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}
+      {message && <p className="text-center text-green-800 bg-green-100 dark:bg-green-900/50 dark:text-green-300 p-3 rounded-lg">{message}</p>}
+
+      <form onSubmit={handleSignUp} className="space-y-6">
+        <div>
+          <label className={labelStyles}>Nome Completo</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            className={inputStyles}
+          />
+        </div>
+        <div>
+          <label className={labelStyles}>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className={inputStyles}
+          />
+        </div>
+        <div>
+          <label className={labelStyles}>Senha (mínimo 6 caracteres)</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className={inputStyles}
+          />
+        </div>
+        <div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full px-4 py-2 text-white bg-primary rounded-lg font-semibold hover:bg-purple-700 disabled:bg-purple-300 transition-colors"
+          >
+            {loading ? 'Criando...' : 'Criar Conta'}
+          </button>
+        </div>
+      </form>
+      <p className="text-center text-sm text-gray-600 dark:text-dark-subtext">
+          Já tem uma conta?{' '}
+          <button onClick={() => setActivePage(Page.Login)} className="font-medium text-primary hover:underline">
+              Faça login
+          </button>
+      </p>
     </div>
   );
 };
