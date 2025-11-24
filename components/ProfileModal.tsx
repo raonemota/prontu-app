@@ -18,6 +18,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,6 +28,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
             role: user.role || '',
             profile_pic: user.profile_pic || ''
         });
+    }
+    
+    // Verifica se é possível instalar (evento capturado)
+    if ((window as any).deferredPrompt) {
+        setCanInstall(true);
     }
   }, [user]);
 
@@ -72,6 +78,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
   const handleLogoff = async () => {
       await supabase.auth.signOut();
       onClose();
+  };
+
+  const handleInstallApp = async () => {
+      const promptEvent = (window as any).deferredPrompt;
+      if (promptEvent) {
+          promptEvent.prompt();
+          const { outcome } = await promptEvent.userChoice;
+          if (outcome === 'accepted') {
+              setCanInstall(false);
+              (window as any).deferredPrompt = null;
+          }
+      } else {
+          alert("A instalação não está disponível neste dispositivo ou navegador no momento.");
+      }
   };
   
   const handleUploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,6 +155,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
             </button>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadAvatar} />
           </div>
+          
+          {canInstall && (
+              <button 
+                type="button" 
+                onClick={handleInstallApp}
+                className="w-full mb-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Instalar Aplicativo
+              </button>
+          )}
           
           {message && <p className="text-center text-green-800 bg-green-100 dark:text-green-300 dark:bg-green-900 p-3 rounded-lg mb-4">{message}</p>}
 

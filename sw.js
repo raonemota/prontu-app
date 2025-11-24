@@ -1,8 +1,8 @@
-const CACHE_NAME = 'prontu-cache-v1';
+const CACHE_NAME = 'prontu-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/assets/icon.png'
+  'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png'
 ];
 
 // Instalação do Service Worker
@@ -10,23 +10,44 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        return cache.addAll(urlsToCache);
+        console.log('Opened cache');
+        // Usa addAll mas com catch para não falhar tudo se um arquivo falhar
+        return Promise.all(
+            urlsToCache.map(url => {
+                return cache.add(url).catch(err => console.warn('Failed to cache:', url, err));
+            })
+        );
       })
   );
 });
 
-// Estratégia de Cache: Network First (Tenta rede, se falhar usa cache)
-// Ideal para apps dinâmicos como este que usam Supabase
+// Estratégia de Cache: Network First
 self.addEventListener('fetch', (event) => {
+  // Apenas requisições GET
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     fetch(event.request)
+      .then((response) => {
+        // Se a resposta for válida, clona e atualiza o cache
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME)
+          .then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        return response;
+      })
       .catch(() => {
+        // Se falhar a rede, tenta o cache
         return caches.match(event.request);
       })
   );
 });
 
-// Atualização do Service Worker
+// Atualização do Service Worker e limpeza de caches antigos
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(

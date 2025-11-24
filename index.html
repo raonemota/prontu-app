@@ -7,9 +7,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Prontu - Gestão de Atendimentos</title>
-    <link rel="icon" href="/assets/icon.png" />
+    
+    <!-- Script crítico para capturar evento PWA antes do React -->
+    <script>
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Previne o Chrome de mostrar o prompt nativo imediatamente
+        e.preventDefault();
+        // Guarda o evento para ser acionado pelo botão depois
+        window.deferredPrompt = e;
+        console.log("Evento beforeinstallprompt capturado no index.html");
+      });
+    </script>
+
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/assets/icon.png">
+    <!-- Fallback icon -->
+    <link rel="icon" href="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" />
+    <link rel="apple-touch-icon" href="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,10 +67,10 @@
   <script type="importmap">
 {
   "imports": {
-    "react": "https://cdn.jsdelivr.net/npm/react@18.2.0/+esm",
-    "react/jsx-runtime": "https://cdn.jsdelivr.net/npm/react@18.2.0/jsx-runtime/+esm",
-    "react-dom/client": "https://cdn.jsdelivr.net/npm/react-dom@18.2.0/client/+esm",
-    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm",
+    "react": "https://esm.sh/react@18.2.0",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.43.4",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
