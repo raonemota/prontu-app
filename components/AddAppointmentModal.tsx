@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Patient, Appointment, AppointmentStatus } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -36,7 +37,7 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-md">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">

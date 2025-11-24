@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Appointment, Patient, AppointmentStatus } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -12,6 +13,20 @@ interface EditAppointmentModalProps {
 }
 
 const validStatuses = Object.values(AppointmentStatus);
+
+const getDayOfWeek = (dateString: string) => {
+  if (!dateString) return '';
+  // Append T00:00:00 to ensure we get the day in local time without timezone shifts
+  const date = new Date(dateString + 'T00:00:00'); 
+  const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  return days[date.getDay()];
+};
+
+const formatAppointmentDays = (days: number[] | undefined) => {
+    if (!days || !Array.isArray(days) || days.length === 0) return '';
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    return `( ${days.sort().map(d => dayNames[d]).join(' | ')} )`;
+};
 
 const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
   isOpen,
@@ -84,7 +99,7 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto relative">
         
         {isConfirmingDelete && (
@@ -121,12 +136,19 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
             </button>
           </div>
           <div className="mb-4">
-            <p className="font-semibold text-lg text-primary">{patient.name || 'Nome não informado'}</p>
+            <p className="font-semibold text-lg text-primary flex flex-wrap items-center gap-2">
+                {patient.name || 'Nome não informado'}
+                <span className="text-sm font-normal text-gray-500 dark:text-dark-subtext">
+                    {formatAppointmentDays(patient.appointment_days)}
+                </span>
+            </p>
             <p className="text-sm text-gray-500 dark:text-dark-subtext">{patient.health_plan || 'N/A'} - {patient.clinics?.name || 'Sem clínica'}</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className={labelStyles}>Data</label>
+              <label className={labelStyles}>
+                Data {formData.date && <span className="font-normal text-gray-500 dark:text-dark-subtext lowercase">({getDayOfWeek(formData.date)})</span>}
+              </label>
               <input type="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyles} />
             </div>
             <div>

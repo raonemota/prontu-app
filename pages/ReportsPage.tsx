@@ -457,7 +457,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       </div>
 
       {isExportModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
             <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-sm">
                 <div className="p-6">
                     <h3 className="text-lg font-bold text-dark dark:text-dark-text mb-4">Exportar Relatório</h3>
