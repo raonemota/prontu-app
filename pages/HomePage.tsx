@@ -7,6 +7,8 @@ import EditAppointmentModal from '../components/EditAppointmentModal';
 import { ProfileModal } from '../components/ProfileModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
+import { ChevronDoubleLeftIcon } from '../components/icons/ChevronDoubleLeftIcon';
+import { ChevronDoubleRightIcon } from '../components/icons/ChevronDoubleRightIcon';
 
 interface HomePageProps {
   patients: Patient[];
@@ -33,6 +35,18 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
         setSelectedDate(newDate);
     };
 
+    const changeWeek = (amount: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(selectedDate.getDate() + (amount * 7));
+        setSelectedDate(newDate);
+    };
+
+    const changeMonth = (amount: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setMonth(selectedDate.getMonth() + amount);
+        setSelectedDate(newDate);
+    };
+
     const isToday = (date: Date) => {
         const today = new Date();
         return date.getDate() === today.getDate() &&
@@ -43,21 +57,36 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
     return (
         <div className="bg-white dark:bg-dark-card p-4">
             <div className="flex justify-between items-center mb-4">
-                <button onClick={() => changeDay(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&lt;</button>
+                <div className="flex items-center space-x-1">
+                    <button onClick={() => changeWeek(-1)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-border" title="Voltar uma semana">
+                        <ChevronDoubleLeftIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => changeDay(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-gray-600 dark:text-gray-400" title="Dia anterior">&lt;</button>
+                </div>
+                
                 <div className="flex items-center space-x-2">
+                    <button onClick={() => changeMonth(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Mês anterior">&lt;</button>
                     <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
                         {monthNames[selectedDate.getMonth()]} de {selectedDate.getFullYear()}
                     </h2>
+                    <button onClick={() => changeMonth(1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Próximo mês">&gt;</button>
+                    
                     <button 
                         onClick={() => setSelectedDate(new Date())} 
-                        className="p-1 text-primary hover:bg-primary/10 rounded-full transition-colors"
+                        className="p-1 text-primary hover:bg-primary/10 rounded-full transition-colors ml-2"
                         aria-label="Ir para hoje"
                         title="Ir para hoje"
                     >
                         <CalendarTodayIcon className="w-5 h-5" />
                     </button>
                 </div>
-                <button onClick={() => changeDay(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border">&gt;</button>
+
+                <div className="flex items-center space-x-1">
+                    <button onClick={() => changeDay(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-gray-600 dark:text-gray-400" title="Próximo dia">&gt;</button>
+                    <button onClick={() => changeWeek(1)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-border" title="Avançar uma semana">
+                        <ChevronDoubleRightIcon className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
             <div className="flex justify-around items-center">
                 {Array.from({ length: 7 }).map((_, i) => {
@@ -96,8 +125,25 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const dailyAppointments = useMemo(() => {
     return appointments
       .filter(app => app.date === selectedDateString)
-      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-  }, [appointments, selectedDateString]);
+      .sort((a, b) => {
+        // Find corresponding patients
+        const patientA = allPatients.find(p => p.id === a.patient_id);
+        const patientB = allPatients.find(p => p.id === b.patient_id);
+        
+        const nameA = patientA?.name || '';
+        const nameB = patientB?.name || '';
+
+        // Sort alphabetically by name first
+        const nameComparison = nameA.localeCompare(nameB);
+        
+        // If names are identical, fallback to sorting by time
+        if (nameComparison !== 0) {
+            return nameComparison;
+        }
+        
+        return (a.time || '').localeCompare(b.time || '');
+      });
+  }, [appointments, selectedDateString, allPatients]);
   
   const handleSaveProfile = (updatedUser: Omit<User, 'id' | 'plan'>) => {
     updateUser(updatedUser);
@@ -136,6 +182,9 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
         
         <DayNavigator selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
       </div>
+      
+      {/* Spacer for fixed header */}
+      <div style={{ height: '10px' }}></div>
 
       <div className="p-1">
         <div className="flex justify-between items-center mb-4">

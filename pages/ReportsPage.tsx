@@ -23,15 +23,21 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
   const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  
+  // Filtros da Página Principal
   const [selectedClinicId, setSelectedClinicId] = useState<number | 'all'>('all');
   const [showValues, setShowValues] = useState(true);
+  
+  // Estados do Modal de Exportação
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportClinicId, setExportClinicId] = useState<number | ''>('');
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'csv'>('pdf');
   
   // Infinite Scroll State
   const [displayCount, setDisplayCount] = useState(10);
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Process data to be Grouped by Date
+  // --- Processamento de Dados para a TELA (Visualização Diária) ---
   const groupedReport = useMemo(() => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -46,10 +52,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         // Filter by Date Range
         if (appDate < start || appDate > end) return false;
 
-        // Filter by Status (Only Completed or NoShow - usually only Completed generates revenue, but keeping logic consistent)
+        // Filter by Status (Only Completed or NoShow)
         if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
 
-        // Filter by Clinic
+        // Filter by Clinic (Main Page Filter)
         if (selectedClinicId !== 'all') {
             const patient = allPatients.find(p => p.id === app.patient_id);
             if (!patient || patient.clinic_id !== selectedClinicId) return false;
@@ -75,8 +81,19 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         }
     });
 
-    // Sort days chronologically
-    return Object.values(groups).sort((a, b) => a.date.localeCompare(b.date));
+    const result = Object.values(groups);
+
+    // Sort items inside each day group alphabetically by patient name
+    result.forEach(group => {
+        group.items.sort((a, b) => {
+            const nameA = (a.patient.name || '').toLowerCase();
+            const nameB = (b.patient.name || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+    });
+
+    // Sort days chronologically DESCENDING (Newest first)
+    return result.sort((a, b) => b.date.localeCompare(a.date));
   }, [startDate, endDate, appointments, allPatients, selectedClinicId]);
 
   // Reset display count when filters change
@@ -106,6 +123,18 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     };
   }, [observerTarget]);
 
+  // Quando abrir o modal, define a clínica de exportação padrão
+  const handleOpenExportModal = () => {
+      if (clinics.length > 0) {
+          // Se já tem uma clínica selecionada na tela principal, usa ela. Se for 'all', pega a primeira da lista.
+          setExportClinicId(selectedClinicId !== 'all' ? selectedClinicId : clinics[0].id);
+      } else {
+          setExportClinicId('');
+      }
+      setExportFormat('pdf'); // Reset format to PDF
+      setIsExportModalOpen(true);
+  };
+
   // Slice data for display
   const visibleGroups = groupedReport.slice(0, displayCount);
 
@@ -121,79 +150,157 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     return { totalAppointments, totalToReceive };
   }, [groupedReport]);
   
-  const handleGeneratePdf = () => {
-    const { jsPDF } = jspdf;
-    const doc = new jsPDF();
+  // --- Lógica de Exportação (PDF e CSV) ---
+  const handleExport = () => {
+      if (!exportClinicId) {
+          alert("Por favor, selecione uma clínica para exportar.");
+          return;
+      }
 
-    const clinicName = selectedClinicId === 'all'
-      ? 'Todas as Clínicas'
-      : clinics.find(c => c.id === selectedClinicId)?.name || 'N/A';
+      // 1. Filtrar dados especificamente para a exportação (independente da visualização da tela)
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      start.setHours(0,0,0,0);
+      end.setHours(23,59,59,999);
 
-    doc.setFont("helvetica", "bold");
-    doc.text("Relatório de Atendimentos", 14, 20);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    
-    doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 28);
-    doc.text(`Clínica: ${clinicName}`, 14, 36);
+      const exportData = appointments.filter(app => {
+          if (!app.date) return false;
+          const appDate = new Date(app.date);
+          if (isNaN(appDate.getTime())) return false;
+          
+          // Filter by Date Range
+          if (appDate < start || appDate > end) return false;
 
-    const formattedStartDate = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR');
-    const formattedEndDate = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR');
-    doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 14, 44);
-    doc.text(`Total a Receber: ${summary.totalToReceive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
+          // Filter by Status
+          if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
 
-    // Aggregate data by Patient for PDF
-    const patientsMap: { [key: number]: { name: string, clinic: string, dates: string[], total: number } } = {};
+          // Filter by Export Specific Clinic
+          const patient = allPatients.find(p => p.id === app.patient_id);
+          if (!patient || patient.clinic_id !== exportClinicId) return false;
 
-    // Iterate over the groupedReport which already has filtered data
-    groupedReport.forEach(group => {
-        group.items.forEach(item => {
-            if (!patientsMap[item.patient.id]) {
-                patientsMap[item.patient.id] = {
-                    name: item.patient.name || 'Nome não informado',
-                    clinic: item.clinicName,
-                    dates: [],
-                    total: 0
-                };
-            }
-            const fullFormattedDate = new Date(group.date + 'T00:00:00').toLocaleDateString('pt-BR');
-            // Avoid duplicate dates if multiple appointments on same day (though usually blocked)
-            if (!patientsMap[item.patient.id].dates.includes(fullFormattedDate)) {
-                patientsMap[item.patient.id].dates.push(fullFormattedDate);
-            }
-            patientsMap[item.patient.id].total += (item.patient.session_value || 0);
-        });
-    });
+          return true;
+      });
 
-    const tableBody = Object.values(patientsMap).map(p => [
-        p.name,
-        p.clinic,
-        p.dates.sort((a,b) => {
-             // Simple sort for DD/MM/YYYY strings if needed, or rely on input order
-             const [d1, m1, y1] = a.split('/').map(Number);
-             const [d2, m2, y2] = b.split('/').map(Number);
-             return new Date(y1, m1-1, d1).getTime() - new Date(y2, m2-1, d2).getTime();
-        }).join(' | '),
-        p.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    ]);
+      // Calcular total para o relatório
+      let totalExportValue = 0;
+      exportData.forEach(app => {
+          const patient = allPatients.find(p => p.id === app.patient_id);
+          if(patient) totalExportValue += (patient.session_value || 0);
+      });
 
-    doc.autoTable({
-        startY: 60,
-        head: [['Paciente', 'Clínica', 'Datas dos Atendimentos', 'Valor Total']],
-        body: tableBody,
-        theme: 'striped',
-        headStyles: { fillColor: [122, 58, 255], fontSize: 10 },
-        styles: { fontSize: 9, cellPadding: 3 },
-        columnStyles: {
-            0: { cellWidth: 40 }, // Paciente
-            1: { cellWidth: 30 }, // Clinica
-            2: { cellWidth: 'auto' }, // Datas
-            3: { cellWidth: 30, halign: 'right' } // Valor
-        }
-    });
-    
-    doc.save(`relatorio_${startDate}_${endDate}.pdf`);
-    setIsExportModalOpen(false);
+      const clinicName = clinics.find(c => c.id === exportClinicId)?.name || 'N/A';
+
+      if (exportFormat === 'pdf') {
+          // --- GERAÇÃO DE PDF ---
+          const { jsPDF } = jspdf;
+          const doc = new jsPDF();
+
+          doc.setFont("helvetica", "bold");
+          doc.text("Relatório de Atendimentos", 14, 20);
+          doc.setFontSize(12);
+          doc.setFont("helvetica", "normal");
+          
+          doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 28);
+          doc.text(`Clínica: ${clinicName}`, 14, 36);
+
+          const formattedStartDate = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR');
+          const formattedEndDate = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR');
+          doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 14, 44);
+          doc.text(`Total a Receber: ${totalExportValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
+
+          // Aggregate by Patient for PDF
+          const patientsMap: { [key: number]: { name: string, clinic: string, dates: string[], total: number } } = {};
+
+          exportData.forEach(app => {
+              const patient = allPatients.find(p => p.id === app.patient_id);
+              if (patient) {
+                  if (!patientsMap[patient.id]) {
+                      patientsMap[patient.id] = {
+                          name: patient.name || 'Nome não informado',
+                          clinic: clinicName,
+                          dates: [],
+                          total: 0
+                      };
+                  }
+                  const fullFormattedDate = new Date(app.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                  if (!patientsMap[patient.id].dates.includes(fullFormattedDate)) {
+                      patientsMap[patient.id].dates.push(fullFormattedDate);
+                  }
+                  patientsMap[patient.id].total += (patient.session_value || 0);
+              }
+          });
+
+          const tableBody = Object.values(patientsMap)
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map(p => [
+                  p.name,
+                  p.clinic,
+                  p.dates.sort((a,b) => {
+                      const [d1, m1, y1] = a.split('/').map(Number);
+                      const [d2, m2, y2] = b.split('/').map(Number);
+                      return new Date(y1, m1-1, d1).getTime() - new Date(y2, m2-1, d2).getTime();
+                  }).join(' | '),
+                  p.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+              ]);
+
+          doc.autoTable({
+              startY: 60,
+              head: [['Paciente', 'Clínica', 'Datas dos Atendimentos', 'Valor Total']],
+              body: tableBody,
+              theme: 'striped',
+              headStyles: { fillColor: [122, 58, 255], fontSize: 10 },
+              styles: { fontSize: 9, cellPadding: 3 },
+              columnStyles: {
+                  0: { cellWidth: 40 },
+                  1: { cellWidth: 30 },
+                  2: { cellWidth: 'auto' },
+                  3: { cellWidth: 30, halign: 'right' }
+              }
+          });
+          
+          doc.save(`relatorio_${clinicName}_${startDate}_${endDate}.pdf`);
+
+      } else {
+          // --- GERAÇÃO DE CSV (EXCEL) ---
+          const csvRows = [];
+          // Headers
+          csvRows.push(['Data', 'Paciente', 'Categoria', 'Status', 'Valor'].join(';'));
+
+          // Sort by date descending for CSV
+          exportData.sort((a, b) => b.date.localeCompare(a.date));
+
+          exportData.forEach(app => {
+              const patient = allPatients.find(p => p.id === app.patient_id);
+              if (patient) {
+                  const formattedDate = new Date(app.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                  const value = (patient.session_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                  
+                  csvRows.push([
+                      formattedDate,
+                      `"${patient.name || ''}"`, // Quote names to handle commas
+                      patient.category,
+                      app.status,
+                      value
+                  ].join(';'));
+              }
+          });
+
+          // Add Total Row
+          csvRows.push(['', '', '', 'TOTAL', totalExportValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })].join(';'));
+
+          const csvString = "\uFEFF" + csvRows.join('\n'); // Add BOM for Excel UTF-8 compatibility
+          const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          link.setAttribute("href", url);
+          link.setAttribute("download", `relatorio_${clinicName}_${startDate}_${endDate}.csv`);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      }
+
+      setIsExportModalOpen(false);
   };
 
   const formatDateForDisplay = (dateString: string) => {
@@ -225,7 +332,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         >
             {showValues ? <EyeIcon className="w-6 h-6" /> : <EyeSlashIcon className="w-6 h-6" />}
         </button>
-        <button onClick={() => setIsExportModalOpen(true)} className="p-2 bg-secondary/10 text-secondary rounded-full" aria-label="Exportar PDF">
+        <button onClick={handleOpenExportModal} className="p-2 bg-secondary/10 text-secondary rounded-full" aria-label="Exportar Relatório">
             <DocumentArrowDownIcon className="w-6 h-6" />
         </button>
       </SubPageHeader>
@@ -269,6 +376,22 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Filtro de Clínica para a Tela */}
+      <div className="bg-white dark:bg-dark-card p-3 rounded-xl shadow-md">
+          <label htmlFor="screenClinicSelect" className="block text-xs font-medium text-gray-500 dark:text-dark-subtext mb-1">FILTRAR TELA POR CLÍNICA</label>
+          <select
+              id="screenClinicSelect"
+              value={selectedClinicId}
+              onChange={(e) => setSelectedClinicId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+              <option value="all">Todas as Clínicas</option>
+              {clinics.map(clinic => (
+                  <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
+              ))}
+          </select>
       </div>
 
       <div className="bg-primary p-3 rounded-xl shadow-md text-white">
@@ -336,23 +459,53 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
             <div className="bg-white dark:bg-dark-card rounded-xl shadow-2xl w-full max-w-sm">
                 <div className="p-6">
                     <h3 className="text-lg font-bold text-dark dark:text-dark-text mb-4">Exportar Relatório</h3>
-                    <div>
-                        <label htmlFor="clinicSelect" className="block text-sm font-medium text-gray-700 dark:text-dark-subtext">Selecione a Clínica</label>
+                    
+                    <div className="mb-4">
+                        <label htmlFor="exportClinicSelect" className="block text-sm font-medium text-gray-700 dark:text-dark-subtext mb-1">Clínica para Exportação (Obrigatório)</label>
                         <select
-                            id="clinicSelect"
-                            value={selectedClinicId}
-                            onChange={(e) => setSelectedClinicId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                            className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary"
+                            id="exportClinicSelect"
+                            value={exportClinicId}
+                            onChange={(e) => setExportClinicId(Number(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary"
                         >
-                            <option value="all">Todas as Clínicas</option>
                             {clinics.map(clinic => (
                                 <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
                             ))}
+                            {clinics.length === 0 && <option value="" disabled>Nenhuma clínica cadastrada</option>}
                         </select>
                     </div>
+
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-dark-subtext mb-2">Formato do Arquivo</label>
+                        <div className="flex space-x-4">
+                            <label className="flex items-center cursor-pointer">
+                                <input 
+                                    type="radio" 
+                                    name="exportFormat" 
+                                    value="pdf" 
+                                    checked={exportFormat === 'pdf'} 
+                                    onChange={() => setExportFormat('pdf')}
+                                    className="form-radio text-primary focus:ring-primary h-4 w-4"
+                                />
+                                <span className="ml-2 text-dark dark:text-dark-text text-sm">PDF</span>
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                                <input 
+                                    type="radio" 
+                                    name="exportFormat" 
+                                    value="csv" 
+                                    checked={exportFormat === 'csv'} 
+                                    onChange={() => setExportFormat('csv')}
+                                    className="form-radio text-primary focus:ring-primary h-4 w-4"
+                                />
+                                <span className="ml-2 text-dark dark:text-dark-text text-sm">Excel (CSV)</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div className="mt-6 flex justify-end space-x-3">
                         <button type="button" onClick={() => setIsExportModalOpen(false)} className="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium">Cancelar</button>
-                        <button type="button" onClick={handleGeneratePdf} className="px-4 py-2 bg-primary text-white rounded-lg font-medium">Gerar PDF</button>
+                        <button type="button" onClick={handleExport} className="px-4 py-2 bg-primary text-white rounded-lg font-medium">Exportar</button>
                     </div>
                 </div>
             </div>
