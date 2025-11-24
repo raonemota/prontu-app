@@ -164,7 +164,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
           className="bg-white dark:bg-dark-card p-4"
         >
           <div className="flex items-center justify-between">
-              <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-8 w-auto"/>
+              <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" alt="Prontu" className="h-8 w-auto"/>
               <div 
                   className="flex items-center space-x-3 cursor-pointer"
                   onClick={() => setIsProfileModalOpen(true)}

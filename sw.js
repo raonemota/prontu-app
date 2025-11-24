@@ -1,8 +1,8 @@
-const CACHE_NAME = 'prontu-cache-v2';
+const CACHE_NAME = 'prontu-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
-  'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png'
+  'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png'
 ];
 
 // Instalação do Service Worker

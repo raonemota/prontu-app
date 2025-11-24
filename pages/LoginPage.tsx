@@ -29,7 +29,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   return (
     <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
       <div className="text-center">
-          <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
+          <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
           <p className="text-gray-500 dark:text-dark-subtext mt-4">Acesse sua conta</p>
       </div>
       

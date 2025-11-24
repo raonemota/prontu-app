@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
 import PatientsPage from './pages/PatientsPage';
@@ -41,6 +42,9 @@ const App: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Use refs to track state in async functions to avoid closure staleness
+  const userProfileRef = useRef<User | null>(null);
 
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -63,6 +67,11 @@ const App: React.FC = () => {
     root.classList.add(theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    // Update ref whenever userProfile changes
+    userProfileRef.current = userProfile;
+  }, [userProfile]);
 
   useEffect(() => {
     // Register Service Worker for PWA
@@ -92,13 +101,19 @@ const App: React.FC = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        fetchData(session.user.id);
+        // Check against the ref to see if we actually need to re-fetch
+        // This prevents blocking UI on token refresh or app resume
+        if (!userProfileRef.current || userProfileRef.current.id !== session.user.id) {
+            fetchData(session.user.id);
+        }
       } else {
         setPatients([]);
         setDeactivatedPatients([]);
         setAppointments([]);
         setUserProfile(null);
         setClinics([]);
+        // If logging out, ensure we stop loading
+        setLoading(false);
       }
     });
 
@@ -108,7 +123,12 @@ const App: React.FC = () => {
   }, []);
   
   const fetchData = async (userId: string) => {
-      setLoading(true);
+      // Only show full screen loading if we don't have a profile loaded yet.
+      // This prevents the "stuck on loading" issue when switching apps/resuming.
+      if (!userProfileRef.current) {
+          setLoading(true);
+      }
+      
       try {
           const { data: profileData, error: profileError } = await supabase
               .from('users')
@@ -117,13 +137,21 @@ const App: React.FC = () => {
               .single();
           
           if (profileError || !profileData) {
-              const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
-              console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
-              alert(`Não foi possível carregar os dados do seu perfil: ${errorMessage}\n\nIsso pode ser um problema com as permissões de segurança (RLS). Você será desconectado.`);
-              await supabase.auth.signOut();
-              return;
+              // If looking for profile fails and we have nothing loaded, we must error out.
+              // But if we just failed a background refresh, maybe keep old data? 
+              // For safety, if auth fails, we logout.
+              if (!userProfileRef.current) {
+                  const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
+                  console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
+                  alert(`Não foi possível carregar os dados do seu perfil: ${errorMessage}\n\nIsso pode ser um problema com as permissões de segurança (RLS). Você será desconectado.`);
+                  await supabase.auth.signOut();
+                  return;
+              }
           }
-          setUserProfile(profileData);
+          
+          if (profileData) {
+              setUserProfile(profileData);
+          }
 
           const { data: clinicsData, error: clinicsError } = await supabase
               .from('clinics')
@@ -162,7 +190,10 @@ const App: React.FC = () => {
       } catch (error: unknown) {
           const errorMessage = getErrorMessage(error);
           console.error("Erro ao buscar dados:", errorMessage);
-          alert(`Não foi possível carregar os dados: ${errorMessage}\n\nPor favor, verifique sua conexão e se as políticas de segurança (RLS) estão configuradas corretamente no seu painel Supabase.`);
+          // Only alert if we blocked the UI
+          if (!userProfileRef.current) {
+              alert(`Não foi possível carregar os dados: ${errorMessage}\n\nPor favor, verifique sua conexão e se as políticas de segurança (RLS) estão configuradas corretamente no seu painel Supabase.`);
+          }
       } finally {
           setLoading(false);
       }

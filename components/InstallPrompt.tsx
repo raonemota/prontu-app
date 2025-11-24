@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { CloseIcon } from './icons/CloseIcon';
 
@@ -75,7 +76,7 @@ const InstallPrompt: React.FC = () => {
         <div className="flex-1">
           <h3 className="font-bold text-sm flex items-center gap-2">
             <img 
-                src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" 
+                src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" 
                 alt="App Icon" 
                 className="w-6 h-6 rounded bg-white object-contain" 
             />
