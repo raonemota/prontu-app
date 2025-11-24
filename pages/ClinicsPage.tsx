@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Clinic, Page } from '../types';
 import AddClinicModal from '../components/AddClinicModal';
@@ -38,6 +39,7 @@ const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateCli
       <SubPageHeader 
         title="Minhas Clínicas" 
         onBack={() => setActivePage(Page.Home)}
+        icon={<BuildingIcon className="w-6 h-6" />}
       >
         <button onClick={() => handleOpenModal()} className="p-2 bg-primary/10 text-primary rounded-full" aria-label="Adicionar Clínica">
           <PlusIcon className="w-6 h-6" />

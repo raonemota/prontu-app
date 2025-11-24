@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Page } from '../types';
@@ -46,7 +47,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
   return (
     <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-dark-card rounded-xl shadow-md">
       <div className="text-center">
-          <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
+          <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
           <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
           <p className="text-gray-500 dark:text-dark-subtext">É rápido e fácil.</p>
       </div>

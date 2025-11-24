@@ -6,6 +6,7 @@ import SubPageHeader from '../components/SubPageHeader';
 import { DocumentArrowDownIcon } from '../components/icons/DocumentArrowDownIcon';
 import { EyeIcon } from '../components/icons/EyeIcon';
 import { EyeSlashIcon } from '../components/icons/EyeSlashIcon';
+import { ChartIcon } from '../components/icons/ChartIcon';
 
 declare const jspdf: any;
 
@@ -324,6 +325,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       <SubPageHeader
         title="Relatórios"
         onBack={() => setActivePage(Page.Home)}
+        icon={<ChartIcon className="w-6 h-6" />}
       >
         <button 
             onClick={() => setShowValues(!showValues)} 

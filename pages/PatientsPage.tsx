@@ -6,6 +6,7 @@ import AddPatientModal from '../components/AddPatientModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { ArchiveBoxIcon } from '../components/icons/ArchiveBoxIcon';
 import SubPageHeader from '../components/SubPageHeader';
+import { UsersIcon } from '../components/icons/UsersIcon';
 
 interface PatientsPageProps {
   patients: Patient[];
@@ -50,6 +51,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
       <SubPageHeader 
         title="Pacientes" 
         onBack={() => setActivePage(Page.Home)}
+        icon={<UsersIcon className="w-6 h-6" />}
       >
         <button 
           onClick={() => setActivePage(Page.DeactivatedPatients)} 

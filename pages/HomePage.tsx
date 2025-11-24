@@ -27,7 +27,8 @@ interface HomePageProps {
 
 const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date) => void }> = ({ selectedDate, setSelectedDate }) => {
     const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    // const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    const shortMonthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
     const changeDay = (amount: number) => {
         const newDate = new Date(selectedDate);
@@ -67,7 +68,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                 <div className="flex items-center space-x-2">
                     <button onClick={() => changeMonth(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Mês anterior">&lt;</button>
                     <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
-                        {monthNames[selectedDate.getMonth()]} de {selectedDate.getFullYear()}
+                        {shortMonthNames[selectedDate.getMonth()]}. {selectedDate.getFullYear()}
                     </h2>
                     <button onClick={() => changeMonth(1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Próximo mês">&gt;</button>
                     
@@ -164,7 +165,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
           className="bg-white dark:bg-dark-card p-4"
         >
           <div className="flex items-center justify-between">
-              <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" alt="Prontu" className="h-8 w-auto"/>
+              <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-8 w-auto"/>
               <div 
                   className="flex items-center space-x-3 cursor-pointer"
                   onClick={() => setIsProfileModalOpen(true)}
