@@ -1,3 +1,4 @@
+
 export enum Page {
   Login = 'Login',
   SignUp = 'SignUp',
@@ -6,6 +7,7 @@ export enum Page {
   Reports = 'Reports',
   Clinics = 'Clinics',
   DeactivatedPatients = 'DeactivatedPatients',
+  Admin = 'Admin',
 }
 
 export enum AppointmentStatus {
@@ -28,9 +30,18 @@ export enum Category {
 export interface User {
   id: string;
   full_name: string;
+  email?: string; // Adicionado para exibição no admin
   role: string;
   profile_pic: string;
   plan: 'free' | 'pro';
+  // Campos Administrativos
+  is_admin?: boolean;
+  status_assinatura?: string; // ex: 'active', 'canceled', 'past_due'
+  data_expiracao_acesso?: string;
+  tipo_assinante?: string; // ex: 'Free', 'Beta', 'Premium'
+  ciclo_plano?: string; // ex: 'Mensal', 'Semestral', 'Anual'
+  valor_acumulado?: number; // Valor total pago pelo usuário (LTV)
+  last_sign_in_at?: string;
 }
 
 export interface Clinic {

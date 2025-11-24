@@ -12,6 +12,7 @@ import { supabase } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
 import InstallPrompt from './components/InstallPrompt';
+import AdminPage from './pages/AdminPage';
 
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
@@ -498,6 +499,7 @@ const App: React.FC = () => {
           theme={theme}
           toggleTheme={toggleTheme}
           ensureAppointmentsForDate={ensureAppointmentsForDate}
+          setActivePage={setActivePage}
         />;
       case Page.Patients:
         return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} deactivatePatient={deactivatePatient} clinics={clinics} setActivePage={setActivePage} />;
@@ -517,6 +519,8 @@ const App: React.FC = () => {
           activatePatient={activatePatient}
           setActivePage={setActivePage}
         />;
+      case Page.Admin:
+        return <AdminPage setActivePage={setActivePage} currentUser={userProfile} />;
       default:
         return <HomePage 
           patients={patients} 
@@ -531,6 +535,7 @@ const App: React.FC = () => {
           theme={theme}
           toggleTheme={toggleTheme}
           ensureAppointmentsForDate={ensureAppointmentsForDate}
+          setActivePage={setActivePage}
         />;
     }
   };

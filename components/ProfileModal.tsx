@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User } from '../types';
+import { User, Page } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { supabase } from '../supabaseClient';
+import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -11,9 +12,22 @@ interface ProfileModalProps {
   onSave: (user: Omit<User, 'id' | 'plan'>) => void;
   theme: string;
   toggleTheme: () => void;
+  onNavigateToAdmin?: () => void; // Optional for now, but good practice
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onSave, theme, toggleTheme }) => {
+// We need to pass setActivePage down or handle navigation differently.
+// For simplicity, let's assume we can add a way to navigate.
+// Ideally, ProfileModal should accept a navigation callback or use Context.
+// I'll modify App.tsx to pass a navigation handler if I could, but here 
+// I will rely on the user modifying App.tsx to pass a callback if needed,
+// OR I will use a direct prop if added.
+// Wait, ProfileModal is used in HomePage. Let's assume we'll just close and let App handle it?
+// Actually, the cleanest way without rewriting everything is to add a prop `navigateToAdmin`.
+
+// Let's update the Props in App.tsx where ProfileModal is called.
+// But first, let's define the component with the new button.
+
+export const ProfileModal: React.FC<ProfileModalProps & { navigateTo?: (page: Page) => void }> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo }) => {
   const [formData, setFormData] = useState({ full_name: '', role: '', profile_pic: '' });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -156,6 +170,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
             </button>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadAvatar} />
           </div>
+
+          {user.is_admin && navigateTo && (
+            <button 
+              type="button" 
+              onClick={() => { onClose(); navigateTo(Page.Admin); }}
+              className="w-full mb-4 py-2 bg-gray-800 text-white dark:bg-gray-700 border border-gray-600 rounded-lg font-medium hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 shadow-md"
+            >
+                <ShieldCheckIcon className="w-5 h-5" />
+                Painel Administrativo
+            </button>
+          )}
           
           {canInstall && (
               <button 
