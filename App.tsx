@@ -10,6 +10,7 @@ import BottomNav from './components/BottomNav';
 import { supabase } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
+import InstallPrompt from './components/InstallPrompt';
 
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
@@ -64,6 +65,19 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registered: ', registration);
+          })
+          .catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -483,6 +497,7 @@ const App: React.FC = () => {
                 {renderPage()}
               </main>
               <BottomNav activePage={activePage} setActivePage={setActivePage} />
+              <InstallPrompt />
             </>
           )}
       </div>
