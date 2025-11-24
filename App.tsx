@@ -88,17 +88,49 @@ const App: React.FC = () => {
     }
 
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session) {
-        fetchData(session.user.id);
-      } else {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+            throw error;
+        }
+
+        setSession(session);
+        if (session) {
+          fetchData(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error getting session:", getErrorMessage(error));
+        // If the refresh token is invalid or missing, force sign out to clear bad state
+        await supabase.auth.signOut();
+        setSession(null);
         setLoading(false);
       }
     };
     getSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        setSession(null);
+        setPatients([]);
+        setDeactivatedPatients([]);
+        setAppointments([]);
+        setUserProfile(null);
+        setClinics([]);
+        setLoading(false);
+        return;
+      }
+      
+      if (event === 'TOKEN_REFRESH_REVOKED') {
+          console.warn("Token refresh revoked.");
+          // Optionally force sign out here too if needed
+          setSession(null);
+          setLoading(false);
+          return;
+      }
+
       setSession(session);
       if (session) {
         // Check against the ref to see if we actually need to re-fetch
@@ -107,12 +139,12 @@ const App: React.FC = () => {
             fetchData(session.user.id);
         }
       } else {
+        // Fallback for cases where session becomes null without explicit sign out event
         setPatients([]);
         setDeactivatedPatients([]);
         setAppointments([]);
         setUserProfile(null);
         setClinics([]);
-        // If logging out, ensure we stop loading
         setLoading(false);
       }
     });

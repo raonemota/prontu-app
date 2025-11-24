@@ -158,7 +158,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const userProfilePic = user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <div className="sticky top-0 z-40 -mx-4 -mt-4 shadow-lg rounded-b-3xl overflow-hidden">
         <header 
           className="bg-white dark:bg-dark-card p-4"
@@ -183,9 +183,6 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
         <DayNavigator selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
       </div>
       
-      {/* Spacer for fixed header */}
-      <div style={{ height: '10px' }}></div>
-
       <div className="p-1">
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-dark dark:text-dark-text">Agendamentos</h2>
