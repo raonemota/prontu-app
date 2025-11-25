@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Page } from '../types';
 import SubPageHeader from '../components/SubPageHeader';
@@ -101,7 +102,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
-
+  
   const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
       case 'active':
