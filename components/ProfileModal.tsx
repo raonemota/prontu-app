@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Page } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { supabase } from '../supabaseClient';
 import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
+import { StarIcon } from './icons/StarIcon';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -175,29 +177,42 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUploadAvatar} />
           </div>
 
-          {user.is_admin && navigateTo && (
-            <button 
-              type="button" 
-              onClick={() => { onClose(); navigateTo(Page.Admin); }}
-              className="w-full mb-4 py-2 bg-gray-800 text-white dark:bg-gray-700 border border-gray-600 rounded-lg font-medium hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 shadow-md"
-            >
-                <ShieldCheckIcon className="w-5 h-5" />
-                Painel Administrativo
-            </button>
-          )}
-          
-          {canInstall && (
+          <div className="space-y-3 mb-6">
+            {navigateTo && (
+              <button 
+                  type="button" 
+                  onClick={() => { onClose(); navigateTo(Page.Landing); }}
+                  className="w-full py-3 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white rounded-lg font-bold shadow-md hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                >
+                    <StarIcon className="w-5 h-5 text-white" />
+                    Seja Premium
+              </button>
+            )}
+
+            {user.is_admin && navigateTo && (
               <button 
                 type="button" 
-                onClick={handleInstallApp}
-                className="w-full mb-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+                onClick={() => { onClose(); navigateTo(Page.Admin); }}
+                className="w-full py-2 bg-gray-800 text-white dark:bg-gray-700 border border-gray-600 rounded-lg font-medium hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 shadow-md"
               >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Instalar Aplicativo
+                  <ShieldCheckIcon className="w-5 h-5" />
+                  Painel Administrativo
               </button>
-          )}
+            )}
+            
+            {canInstall && (
+                <button 
+                  type="button" 
+                  onClick={handleInstallApp}
+                  className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Instalar Aplicativo
+                </button>
+            )}
+          </div>
           
           {message && <p className="text-center text-green-800 bg-green-100 dark:text-green-300 dark:bg-green-900 p-3 rounded-lg mb-4">{message}</p>}
 

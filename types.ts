@@ -8,6 +8,7 @@ export enum Page {
   Clinics = 'Clinics',
   DeactivatedPatients = 'DeactivatedPatients',
   Admin = 'Admin',
+  Landing = 'Landing',
 }
 
 export enum AppointmentStatus {

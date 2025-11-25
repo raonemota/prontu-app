@@ -2,15 +2,17 @@
 import React from 'react';
 import { CloseIcon } from './icons/CloseIcon';
 import { LockClosedIcon } from './icons/LockClosedIcon';
+import { Page } from '../types';
 
 interface PremiumAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   message: string;
+  navigateTo?: (page: Page) => void;
 }
 
-const PremiumAlertModal: React.FC<PremiumAlertModalProps> = ({ isOpen, onClose, title, message }) => {
+const PremiumAlertModal: React.FC<PremiumAlertModalProps> = ({ isOpen, onClose, title, message, navigateTo }) => {
   if (!isOpen) return null;
 
   return (
@@ -38,10 +40,10 @@ const PremiumAlertModal: React.FC<PremiumAlertModalProps> = ({ isOpen, onClose, 
             </p>
 
             <button 
-                onClick={onClose}
-                className="w-full py-3 bg-primary text-white rounded-xl font-semibold shadow-lg hover:bg-purple-700 transition-transform active:scale-95"
+                onClick={navigateTo ? () => { onClose(); navigateTo(Page.Landing); } : onClose}
+                className="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-transform active:scale-95"
             >
-                Entendi
+                {navigateTo ? 'Ver Planos Premium' : 'Entendi'}
             </button>
         </div>
       </div>

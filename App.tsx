@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
@@ -12,6 +13,7 @@ import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
 import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
+import LandingPage from './pages/LandingPage';
 
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
@@ -504,6 +506,11 @@ const App: React.FC = () => {
   const allPatients = useMemo(() => [...patients, ...deactivatedPatients], [patients, deactivatedPatients]);
   
   const renderPage = () => {
+    // Landing Page accessible even if not fully loaded (for logout flow or direct link)
+    if (activePage === Page.Landing) {
+        return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
+    }
+
     if (loading || !userProfile) {
         return (
             <div className="flex items-center justify-center" style={{height: 'calc(100vh - 5rem)'}}>
@@ -576,7 +583,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (loading && !session) {
+  if (loading && !session && activePage !== Page.Landing) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
             <p className="text-xl font-semibold text-primary">Carregando...</p>
@@ -586,8 +593,9 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-black">
-      <div className="w-full max-w-[800px] mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text">
-        {!session ? (
+      {/* Remove max-w restriction for Landing Page to allow full width hero */}
+      <div className={`w-full ${activePage === Page.Landing ? '' : 'max-w-[800px]'} mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text`}>
+        {!session && activePage !== Page.Landing ? (
             <div className="flex items-center justify-center min-h-screen px-4">
               {activePage === Page.SignUp ? (
                 <SignUpPage setActivePage={setActivePage} />
@@ -597,10 +605,18 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              <main className="p-4 pb-24">
-                {renderPage()}
-              </main>
-              <BottomNav activePage={activePage} setActivePage={setActivePage} />
+              {activePage === Page.Landing ? (
+                 <main className="p-0 pb-0">
+                    {renderPage()}
+                 </main>
+              ) : (
+                 <main className="p-4 pb-24">
+                    {renderPage()}
+                 </main>
+              )}
+              {activePage !== Page.Landing && (
+                <BottomNav activePage={activePage} setActivePage={setActivePage} />
+              )}
               <InstallPrompt />
             </>
           )}
