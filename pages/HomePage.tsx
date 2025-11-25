@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Appointment, Patient, AppointmentStatus, User, Page } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
 import AddAppointmentModal from '../components/AddAppointmentModal';
@@ -30,6 +30,18 @@ interface HomePageProps {
 const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date) => void }> = ({ selectedDate, setSelectedDate }) => {
     const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const shortMonthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Efeito para centralizar ou focar no dia selecionado quando ele mudar
+    useEffect(() => {
+        if (scrollRef.current) {
+            // Encontra o elemento do dia selecionado (assumindo que ele tem a classe ring-2)
+            const selectedEl = scrollRef.current.querySelector('.ring-primary') || scrollRef.current.querySelector('.bg-primary');
+            if (selectedEl) {
+                selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }, [selectedDate]);
 
     const changeDay = (amount: number) => {
         const newDate = new Date(selectedDate);
@@ -56,9 +68,13 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                date.getFullYear() === today.getFullYear();
     };
 
+    // Calcula o início da visualização (Domingo da semana atual)
+    const startViewDate = new Date(selectedDate);
+    startViewDate.setDate(selectedDate.getDate() - selectedDate.getDay());
+
     return (
-        <div className="bg-white dark:bg-dark-card p-4">
-            <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-dark-card pb-4 pt-2">
+            <div className="flex justify-between items-center mb-4 px-4">
                 <div className="flex items-center space-x-1">
                     <button onClick={() => changeWeek(-1)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-border" title="Voltar uma semana">
                         <ChevronDoubleLeftIcon className="w-5 h-5" />
@@ -68,7 +84,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                 
                 <div className="flex items-center space-x-2">
                     <button onClick={() => changeMonth(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Mês anterior">&lt;</button>
-                    <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize">
+                    <h2 className="font-bold text-lg text-dark dark:text-dark-text capitalize whitespace-nowrap">
                         {shortMonthNames[selectedDate.getMonth()]}. {selectedDate.getFullYear()}
                     </h2>
                     <button onClick={() => changeMonth(1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border text-gray-500" title="Próximo mês">&gt;</button>
@@ -90,17 +106,36 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                     </button>
                 </div>
             </div>
-            <div className="flex justify-around items-center">
-                {Array.from({ length: 7 }).map((_, i) => {
-                    const day = new Date(selectedDate);
-                    day.setDate(selectedDate.getDate() - selectedDate.getDay() + i);
+            
+            {/* Scrollable Days Container */}
+            <div 
+                ref={scrollRef}
+                className="flex overflow-x-auto space-x-3 px-4 pb-2 scrollbar-hide snap-x"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Hide scrollbar Firefox/IE
+            >
+                <style>{`
+                    .scrollbar-hide::-webkit-scrollbar {
+                        display: none;
+                    }
+                `}</style>
+                {Array.from({ length: 14 }).map((_, i) => {
+                    const day = new Date(startViewDate);
+                    day.setDate(startViewDate.getDate() + i);
                     const isSelected = day.toDateString() === selectedDate.toDateString();
+                    const dayIsToday = isToday(day);
+                    
                     return (
-                        <div key={i} onClick={() => setSelectedDate(day)} className="cursor-pointer text-center space-y-2">
-                            <p className="text-xs text-gray-500 dark:text-dark-subtext">{weekDays[day.getDay()].toUpperCase()}</p>
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-200
-                                ${isSelected ? 'bg-primary text-white scale-110' : 'bg-transparent text-dark dark:text-dark-text'}
-                                ${isToday(day) && !isSelected ? 'ring-2 ring-primary' : ''}`}>
+                        <div 
+                            key={i} 
+                            onClick={() => setSelectedDate(day)} 
+                            className="flex-shrink-0 cursor-pointer text-center space-y-2 snap-start min-w-[3.5rem]"
+                        >
+                            <p className={`text-xs ${isSelected ? 'text-primary font-bold' : 'text-gray-500 dark:text-dark-subtext'}`}>
+                                {weekDays[day.getDay()].toUpperCase()}
+                            </p>
+                            <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-200
+                                ${isSelected ? 'bg-primary text-white shadow-lg scale-110 ring-2 ring-primary ring-offset-2 ring-offset-white dark:ring-offset-dark-card' : 'bg-gray-50 dark:bg-dark-border text-dark dark:text-dark-text'}
+                                ${dayIsToday && !isSelected ? 'ring-1 ring-primary text-primary' : ''}`}>
                                 {day.getDate()}
                             </div>
                         </div>
