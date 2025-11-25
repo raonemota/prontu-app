@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Appointment, Patient, AppointmentStatus, User, Page } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
 import AddAppointmentModal from '../components/AddAppointmentModal';
@@ -24,24 +23,111 @@ interface HomePageProps {
   theme: string;
   toggleTheme: () => void;
   ensureAppointmentsForDate: (date: Date) => Promise<void>;
-  setActivePage?: (page: Page) => void; // Added optional prop for navigation
+  setActivePage?: (page: Page) => void;
 }
 
 const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date) => void }> = ({ selectedDate, setSelectedDate }) => {
     const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const shortMonthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [visibleDays, setVisibleDays] = useState<Date[]>([]);
+    const isDragging = useRef(false);
 
-    // Efeito para centralizar ou focar no dia selecionado quando ele mudar
-    useEffect(() => {
-        if (scrollRef.current) {
-            // Encontra o elemento do dia selecionado (assumindo que ele tem a classe ring-2)
-            const selectedEl = scrollRef.current.querySelector('.ring-primary') || scrollRef.current.querySelector('.bg-primary');
-            if (selectedEl) {
-                selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
+    // Helper to generate a range of dates
+    const generateDays = useCallback((centerDate: Date, daysBefore: number, daysAfter: number) => {
+        const days = [];
+        for (let i = -daysBefore; i <= daysAfter; i++) {
+            const d = new Date(centerDate);
+            d.setDate(centerDate.getDate() + i);
+            days.push(d);
         }
-    }, [selectedDate]);
+        return days;
+    }, []);
+
+    // Initial load and Reset when selectedDate changes significantly (e.g. month jump)
+    // We check if selectedDate is already in visibleDays to avoid unnecessary resets on simple clicks
+    useEffect(() => {
+        const isSelectedVisible = visibleDays.some(d => d.toDateString() === selectedDate.toDateString());
+        
+        // If the date is not visible (or it's the first load), regenerate the list centered on selectedDate
+        if (!isSelectedVisible) {
+            const newDays = generateDays(selectedDate, 15, 15); // 31 days total buffer
+            setVisibleDays(newDays);
+            
+            // Scroll to center after render
+            setTimeout(() => {
+                if (scrollRef.current) {
+                    const container = scrollRef.current;
+                    const centerElement = container.children[15] as HTMLElement; // Center index
+                    if (centerElement) {
+                        const scrollLeft = centerElement.offsetLeft - (container.clientWidth / 2) + (centerElement.clientWidth / 2);
+                        container.scrollTo({ left: scrollLeft, behavior: 'auto' });
+                    }
+                }
+            }, 50);
+        } else {
+             // Just scroll to it smoothly if it is visible
+             setTimeout(() => {
+                if (scrollRef.current) {
+                    const selectedEl = scrollRef.current.querySelector('.ring-primary') || scrollRef.current.querySelector('.bg-primary');
+                    if (selectedEl) {
+                        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }
+            }, 100);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDate]); // Removed visibleDays dependency to avoid loops
+
+    const handleScroll = () => {
+        if (!scrollRef.current) return;
+        
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+        const threshold = 100; // px from edge to trigger load
+
+        // Load Future (Right)
+        if (scrollLeft + clientWidth >= scrollWidth - threshold) {
+            const lastDay = visibleDays[visibleDays.length - 1];
+            const newDays = [];
+            for (let i = 1; i <= 14; i++) {
+                const d = new Date(lastDay);
+                d.setDate(lastDay.getDate() + i);
+                newDays.push(d);
+            }
+            setVisibleDays(prev => [...prev, ...newDays]);
+        }
+
+        // Load Past (Left)
+        if (scrollLeft <= threshold) {
+            // Prevent multiple triggers while adjusting scroll
+            if (isDragging.current) return;
+            isDragging.current = true;
+
+            const firstDay = visibleDays[0];
+            const newDays = [];
+            for (let i = 14; i > 0; i--) {
+                const d = new Date(firstDay);
+                d.setDate(firstDay.getDate() - i);
+                newDays.push(d);
+            }
+
+            // Calculate current width before update to adjust scroll later
+            const oldScrollWidth = scrollRef.current.scrollWidth;
+
+            setVisibleDays(prev => [...newDays, ...prev]);
+
+            // Adjust scroll position after render to prevent jump
+            // We use requestAnimationFrame/setTimeout to wait for React render
+            setTimeout(() => {
+                if (scrollRef.current) {
+                    const newScrollWidth = scrollRef.current.scrollWidth;
+                    const widthDiff = newScrollWidth - oldScrollWidth;
+                    scrollRef.current.scrollLeft += widthDiff;
+                    isDragging.current = false;
+                }
+            }, 0);
+        }
+    };
 
     const changeDay = (amount: number) => {
         const newDate = new Date(selectedDate);
@@ -67,10 +153,6 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                date.getMonth() === today.getMonth() &&
                date.getFullYear() === today.getFullYear();
     };
-
-    // Calcula o início da visualização (Domingo da semana atual)
-    const startViewDate = new Date(selectedDate);
-    startViewDate.setDate(selectedDate.getDate() - selectedDate.getDay());
 
     return (
         <div className="bg-white dark:bg-dark-card pb-4 pt-2">
@@ -110,6 +192,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
             {/* Scrollable Days Container */}
             <div 
                 ref={scrollRef}
+                onScroll={handleScroll}
                 className="flex overflow-x-auto space-x-3 px-4 pb-2 scrollbar-hide snap-x"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Hide scrollbar Firefox/IE
             >
@@ -118,15 +201,13 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                         display: none;
                     }
                 `}</style>
-                {Array.from({ length: 14 }).map((_, i) => {
-                    const day = new Date(startViewDate);
-                    day.setDate(startViewDate.getDate() + i);
+                {visibleDays.map((day, i) => {
                     const isSelected = day.toDateString() === selectedDate.toDateString();
                     const dayIsToday = isToday(day);
                     
                     return (
                         <div 
-                            key={i} 
+                            key={day.toISOString()} // Use ISO string for unique key
                             onClick={() => setSelectedDate(day)} 
                             className="flex-shrink-0 cursor-pointer text-center space-y-2 snap-start min-w-[3.5rem]"
                         >
