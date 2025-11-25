@@ -151,14 +151,13 @@ const App: React.FC = () => {
 
         setSession(session);
         if (session) {
-          // Se estamos no domínio da Landing e o usuário tem sessão, redirecionar para o App
-          if (isLandingDomain) {
-             window.location.href = `https://${APP_DOMAIN}`;
-             return;
-          }
+          // Permite que o usuário logado visualize a Landing Page sem redirect automático
+          // O renderPage cuidará de exibir a LandingPage se isLandingDomain for true
 
-          // Apenas define para Home na carga inicial se estivermos no fluxo de login
-          setActivePage(Page.Home);
+          // Apenas define para Home na carga inicial se NÃO estivermos na Landing
+          if (!isLandingDomain) {
+             setActivePage(Page.Home);
+          }
           fetchData(session.user.id);
         } else {
           setLoading(false);
@@ -205,14 +204,9 @@ const App: React.FC = () => {
 
       setSession(session);
       if (session) {
-        // Redirecionamento de domínio cruzado se necessário
-        if (isLandingDomain) {
-            window.location.href = `https://${APP_DOMAIN}`;
-            return;
-        }
-
         // Usa o Ref para verificar a página atual sem causar re-render ou re-execução do efeito
-        if (activePageRef.current === Page.Login || activePageRef.current === Page.SignUp) {
+        // Se estiver na Landing, não forçamos Home
+        if (!isLandingDomain && (activePageRef.current === Page.Login || activePageRef.current === Page.SignUp)) {
             setActivePage(Page.Home);
         }
         fetchData(session.user.id);
