@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Appointment, Patient, AppointmentStatus, User, Page } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
@@ -16,7 +17,7 @@ interface HomePageProps {
   appointments: Appointment[];
   updateAppointmentStatus: (appointmentId: number, status: AppointmentStatus) => void;
   updateAppointmentDetails: (appointmentId: number, updatedDetails: { date: string, time: string, status: AppointmentStatus, observation: string | null }) => void;
-  deleteAppointment: (appointmentId: number) => void;
+  deleteAppointment: (appointmentId: number) => Promise<boolean>;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'user_id'>) => void;
   user: User;
   updateUser: (user: Omit<User, 'id' | 'plan'>) => void;
@@ -135,12 +136,6 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
         setSelectedDate(newDate);
     };
 
-    const changeWeek = (amount: number) => {
-        const newDate = new Date(selectedDate);
-        newDate.setDate(selectedDate.getDate() + (amount * 7));
-        setSelectedDate(newDate);
-    };
-
     const changeMonth = (amount: number) => {
         const newDate = new Date(selectedDate);
         newDate.setMonth(selectedDate.getMonth() + amount);
@@ -157,11 +152,14 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
     return (
         <div className="bg-white dark:bg-dark-card pb-4 pt-2">
             <div className="flex justify-between items-center mb-4 px-4">
-                <div className="flex items-center space-x-1">
-                    <button onClick={() => changeWeek(-1)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-border" title="Voltar uma semana">
-                        <ChevronDoubleLeftIcon className="w-5 h-5" />
+                <div className="flex items-center">
+                    <button 
+                        onClick={() => changeDay(-1)} 
+                        className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-xl text-gray-600 dark:text-gray-400" 
+                        title="Dia anterior"
+                    >
+                        &lt;
                     </button>
-                    <button onClick={() => changeDay(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-gray-600 dark:text-gray-400" title="Dia anterior">&lt;</button>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -181,10 +179,13 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                     </button>
                 </div>
 
-                <div className="flex items-center space-x-1">
-                    <button onClick={() => changeDay(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-gray-600 dark:text-gray-400" title="Próximo dia">&gt;</button>
-                    <button onClick={() => changeWeek(1)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-border" title="Avançar uma semana">
-                        <ChevronDoubleRightIcon className="w-5 h-5" />
+                <div className="flex items-center">
+                    <button 
+                        onClick={() => changeDay(1)} 
+                        className="p-3 rounded-full hover:bg-gray-100 dark:hover:bg-dark-border font-bold text-xl text-gray-600 dark:text-gray-400" 
+                        title="Próximo dia"
+                    >
+                        &gt;
                     </button>
                 </div>
             </div>
@@ -193,7 +194,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
             <div 
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex overflow-x-auto space-x-3 px-4 pb-2 scrollbar-hide snap-x"
+                className="flex overflow-x-auto pb-2 scrollbar-hide snap-x"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} // Hide scrollbar Firefox/IE
             >
                 <style>{`
@@ -209,7 +210,7 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
                         <div 
                             key={day.toISOString()} // Use ISO string for unique key
                             onClick={() => setSelectedDate(day)} 
-                            className="flex-shrink-0 cursor-pointer text-center space-y-2 snap-start min-w-[3.5rem]"
+                            className="flex-shrink-0 cursor-pointer text-center space-y-2 snap-start min-w-[14.28%] w-[14.28%] p-1"
                         >
                             <p className={`text-xs ${isSelected ? 'text-primary font-bold' : 'text-gray-500 dark:text-dark-subtext'}`}>
                                 {weekDays[day.getDay()].toUpperCase()}

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Page } from '../types';
@@ -27,6 +26,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
       options: {
         data: {
           full_name: fullName,
+          profile_pic: 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png'
         }
       }
     });

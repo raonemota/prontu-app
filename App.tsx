@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
@@ -9,7 +8,7 @@ import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import BottomNav from './components/BottomNav';
 import { supabase } from './supabaseClient';
-import { Session } from '@supabase/supabase-js';
+import { Session, RealtimeChannel } from '@supabase/supabase-js';
 import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
 import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
@@ -74,6 +73,38 @@ const App: React.FC = () => {
     userProfileRef.current = userProfile;
   }, [userProfile]);
 
+  // Realtime Subscription for User Profile Updates (Plan changes, etc.)
+  useEffect(() => {
+    let channel: RealtimeChannel;
+
+    if (session?.user?.id) {
+      // Subscribe to changes in the 'users' table for the current user
+      channel = supabase
+        .channel('public:users')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `id=eq.${session.user.id}`,
+          },
+          (payload) => {
+            console.log('Perfil atualizado em tempo real:', payload.new);
+            // Update local state immediately with the new data from DB
+            setUserProfile(prev => ({ ...prev, ...payload.new } as User));
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [session]);
+
   useEffect(() => {
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
@@ -113,7 +144,10 @@ const App: React.FC = () => {
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      // Cast event to string to avoid TypeScript errors
+      const eventType = event as string;
+
+      if (eventType === 'SIGNED_OUT' || eventType === 'USER_DELETED') {
         setSession(null);
         setPatients([]);
         setDeactivatedPatients([]);
@@ -124,9 +158,8 @@ const App: React.FC = () => {
         return;
       }
       
-      if (event === 'TOKEN_REFRESH_REVOKED') {
+      if (eventType === 'TOKEN_REFRESH_REVOKED') {
           console.warn("Token refresh revoked.");
-          // Optionally force sign out here too if needed
           setSession(null);
           setLoading(false);
           return;
@@ -134,13 +167,9 @@ const App: React.FC = () => {
 
       setSession(session);
       if (session) {
-        // Check against the ref to see if we actually need to re-fetch
-        // This prevents blocking UI on token refresh or app resume
-        if (!userProfileRef.current || userProfileRef.current.id !== session.user.id) {
-            fetchData(session.user.id);
-        }
+        // Always try to fetch data to ensure freshness, but fetchData handles the loading state gracefully
+        fetchData(session.user.id);
       } else {
-        // Fallback for cases where session becomes null without explicit sign out event
         setPatients([]);
         setDeactivatedPatients([]);
         setAppointments([]);
@@ -157,12 +186,17 @@ const App: React.FC = () => {
   
   const fetchData = async (userId: string) => {
       // Only show full screen loading if we don't have a profile loaded yet.
-      // This prevents the "stuck on loading" issue when switching apps/resuming.
       if (!userProfileRef.current) {
           setLoading(true);
       }
       
       try {
+          // Update last_sign_in_at silently
+          await supabase
+            .from('users')
+            .update({ last_sign_in_at: new Date().toISOString() })
+            .eq('id', userId);
+
           const { data: profileData, error: profileError } = await supabase
               .from('users')
               .select('*')
@@ -170,9 +204,6 @@ const App: React.FC = () => {
               .single();
           
           if (profileError || !profileData) {
-              // If looking for profile fails and we have nothing loaded, we must error out.
-              // But if we just failed a background refresh, maybe keep old data? 
-              // For safety, if auth fails, we logout.
               if (!userProfileRef.current) {
                   const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
                   console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
@@ -223,7 +254,6 @@ const App: React.FC = () => {
       } catch (error: unknown) {
           const errorMessage = getErrorMessage(error);
           console.error("Erro ao buscar dados:", errorMessage);
-          // Only alert if we blocked the UI
           if (!userProfileRef.current) {
               alert(`Não foi possível carregar os dados: ${errorMessage}\n\nPor favor, verifique sua conexão e se as políticas de segurança (RLS) estão configuradas corretamente no seu painel Supabase.`);
           }
@@ -271,7 +301,6 @@ const App: React.FC = () => {
       alert(`Erro ao adicionar paciente: ${errorMessage}`);
     } else if (data) {
       setPatients(prev => [...prev, data as Patient]);
-      // Removed generateAppointmentsForPatient call
     }
   };
 
@@ -441,7 +470,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Clinic CRUD Functions
   const addClinic = async (clinic: Omit<Clinic, 'id' | 'user_id'>) => {
     if (!session) return;
     const { data, error } = await supabase.from('clinics').insert({ ...clinic, user_id: session.user.id }).select().single();
@@ -502,7 +530,15 @@ const App: React.FC = () => {
           setActivePage={setActivePage}
         />;
       case Page.Patients:
-        return <PatientsPage patients={patients} addPatient={addPatient} updatePatient={updatePatient} deactivatePatient={deactivatePatient} clinics={clinics} setActivePage={setActivePage} />;
+        return <PatientsPage 
+        patients={patients} 
+        addPatient={addPatient} 
+        updatePatient={updatePatient} 
+        deactivatePatient={deactivatePatient} 
+        clinics={clinics} 
+        setActivePage={setActivePage} 
+        user={userProfile}
+      />;
       case Page.Reports:
         return <ReportsPage 
           allPatients={allPatients}

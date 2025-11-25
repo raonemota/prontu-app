@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Appointment, Patient, AppointmentStatus } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -16,7 +15,7 @@ const validStatuses = Object.values(AppointmentStatus);
 
 const getDayOfWeek = (dateString: string) => {
   if (!dateString) return '';
-  // Append T00:00:00 to ensure we get the day in local time without timezone shifts
+  // Append T00:00:00 to ensure we get the day in local time without timezone shifts usually caused by parsing YYYY-MM-DD alone
   const date = new Date(dateString + 'T00:00:00'); 
   const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
   return days[date.getDay()];
@@ -145,11 +144,17 @@ const EditAppointmentModal: React.FC<EditAppointmentModalProps> = ({
             <p className="text-sm text-gray-500 dark:text-dark-subtext">{patient.health_plan || 'N/A'} - {patient.clinics?.name || 'Sem clínica'}</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className={labelStyles}>
-                Data {formData.date && <span className="font-normal text-gray-500 dark:text-dark-subtext lowercase">({getDayOfWeek(formData.date)})</span>}
-              </label>
-              <input type="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyles} />
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelStyles}>
+                    Data {formData.date && <span className="font-normal text-gray-500 dark:text-dark-subtext lowercase text-xs">({getDayOfWeek(formData.date)})</span>}
+                  </label>
+                  <input type="date" name="date" value={formData.date} onChange={handleChange} required className={inputStyles} />
+                </div>
+                <div>
+                  <label className={labelStyles}>Hora</label>
+                  <input type="time" name="time" value={formData.time} onChange={handleChange} required className={inputStyles} />
+                </div>
             </div>
             <div>
                 <label className={labelStyles}>Status</label>

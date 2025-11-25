@@ -7,6 +7,7 @@ import { DocumentArrowDownIcon } from '../components/icons/DocumentArrowDownIcon
 import { EyeIcon } from '../components/icons/EyeIcon';
 import { EyeSlashIcon } from '../components/icons/EyeSlashIcon';
 import { ChartIcon } from '../components/icons/ChartIcon';
+import PremiumAlertModal from '../components/PremiumAlertModal';
 
 declare const jspdf: any;
 
@@ -27,13 +28,17 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
   
   // Filtros da Página Principal
   const [selectedClinicId, setSelectedClinicId] = useState<number | 'all'>('all');
-  const [showValues, setShowValues] = useState(true);
+  const [showValues, setShowValues] = useState(false);
   
   // Estados do Modal de Exportação
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportClinicId, setExportClinicId] = useState<number | ''>('');
   const [exportFormat, setExportFormat] = useState<'pdf' | 'csv'>('pdf');
   
+  // Estados para o Modal Premium
+  const [isPremiumAlertOpen, setIsPremiumAlertOpen] = useState(false);
+  const [premiumAlertInfo, setPremiumAlertInfo] = useState({ title: '', message: '' });
+
   // Infinite Scroll State
   const [displayCount, setDisplayCount] = useState(10);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -124,8 +129,37 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     };
   }, [observerTarget]);
 
-  // Quando abrir o modal, define a clínica de exportação padrão
+    // Quando abrir o modal, define a clínica de exportação padrão
   const handleOpenExportModal = () => {
+      // Lógica de Controle de Acesso
+      const plan = user.tipo_assinante || 'Free';
+      const isFree = plan === 'Free';
+      const isPremium = plan === 'Premium';
+
+      // Regra 1: Usuários Free não podem exportar relatórios
+      if (isFree) {
+          setPremiumAlertInfo({
+              title: "Recurso Premium",
+              message: "A exportação de relatórios (PDF/Excel) é exclusiva para assinantes Premium ou Beta. Faça um upgrade para desbloquear esta funcionalidade."
+          });
+          setIsPremiumAlertOpen(true);
+          return;
+      }
+
+      // Regra 2: Usuários Premium devem estar com a assinatura em dia
+      if (isPremium && user.data_expiracao_acesso) {
+          const expirationDate = new Date(user.data_expiracao_acesso);
+          const today = new Date();
+          if (today > expirationDate) {
+              setPremiumAlertInfo({
+                  title: "Assinatura Expirada",
+                  message: "Sua assinatura Premium expirou. Renove seu plano para voltar a exportar relatórios."
+              });
+              setIsPremiumAlertOpen(true);
+              return;
+          }
+      }
+
       if (clinics.length > 0) {
           // Se já tem uma clínica selecionada na tela principal, usa ela. Se for 'all', pega a primeira da lista.
           setExportClinicId(selectedClinicId !== 'all' ? selectedClinicId : clinics[0].id);
@@ -513,6 +547,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
             </div>
         </div>
     )}
+
+    <PremiumAlertModal 
+        isOpen={isPremiumAlertOpen}
+        onClose={() => setIsPremiumAlertOpen(false)}
+        title={premiumAlertInfo.title}
+        message={premiumAlertInfo.message}
+    />
     </div>
   );
 };

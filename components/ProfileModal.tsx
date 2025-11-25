@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Page } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -12,22 +11,10 @@ interface ProfileModalProps {
   onSave: (user: Omit<User, 'id' | 'plan'>) => void;
   theme: string;
   toggleTheme: () => void;
-  onNavigateToAdmin?: () => void; // Optional for now, but good practice
+  navigateTo?: (page: Page) => void;
 }
 
-// We need to pass setActivePage down or handle navigation differently.
-// For simplicity, let's assume we can add a way to navigate.
-// Ideally, ProfileModal should accept a navigation callback or use Context.
-// I'll modify App.tsx to pass a navigation handler if I could, but here 
-// I will rely on the user modifying App.tsx to pass a callback if needed,
-// OR I will use a direct prop if added.
-// Wait, ProfileModal is used in HomePage. Let's assume we'll just close and let App handle it?
-// Actually, the cleanest way without rewriting everything is to add a prop `navigateToAdmin`.
-
-// Let's update the Props in App.tsx where ProfileModal is called.
-// But first, let's define the component with the new button.
-
-export const ProfileModal: React.FC<ProfileModalProps & { navigateTo?: (page: Page) => void }> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo }) => {
+export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo }) => {
   const [formData, setFormData] = useState({ full_name: '', role: '', profile_pic: '' });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -138,6 +125,18 @@ export const ProfileModal: React.FC<ProfileModalProps & { navigateTo?: (page: Pa
     }
   };
   
+  const getPlanLabel = () => {
+      const plan = user.tipo_assinante || user.plan || 'Free';
+      return plan;
+  };
+
+  const getPlanColor = () => {
+      const plan = (user.tipo_assinante || user.plan || 'Free').toLowerCase();
+      if (plan === 'premium') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      if (plan === 'beta') return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      return 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  };
+  
   const inputStyles = "mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
@@ -165,6 +164,11 @@ export const ProfileModal: React.FC<ProfileModalProps & { navigateTo?: (page: Pa
           
           <div className="flex flex-col items-center space-y-4 mb-6">
             <img src={formData.profile_pic} alt="User" className="w-24 h-24 rounded-full bg-gray-200 object-cover" />
+            
+            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getPlanColor()}`}>
+                {getPlanLabel()}
+            </div>
+
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">
               {uploading ? 'Enviando...' : 'Trocar foto'}
             </button>
