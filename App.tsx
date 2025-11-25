@@ -61,6 +61,8 @@ const App: React.FC = () => {
   
   // Use refs to track state in async functions to avoid closure staleness
   const userProfileRef = useRef<User | null>(null);
+  // Ref para activePage para usar dentro do listener de auth sem recriar o efeito
+  const activePageRef = useRef<Page>(activePage);
 
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -88,6 +90,10 @@ const App: React.FC = () => {
     // Update ref whenever userProfile changes
     userProfileRef.current = userProfile;
   }, [userProfile]);
+
+  useEffect(() => {
+    activePageRef.current = activePage;
+  }, [activePage]);
 
   // Realtime Subscription for User Profile Updates (Plan changes, etc.)
   useEffect(() => {
@@ -151,6 +157,7 @@ const App: React.FC = () => {
              return;
           }
 
+          // Apenas define para Home na carga inicial se estivermos no fluxo de login
           setActivePage(Page.Home);
           fetchData(session.user.id);
         } else {
@@ -204,7 +211,8 @@ const App: React.FC = () => {
             return;
         }
 
-        if (activePage === Page.Login || activePage === Page.SignUp) {
+        // Usa o Ref para verificar a página atual sem causar re-render ou re-execução do efeito
+        if (activePageRef.current === Page.Login || activePageRef.current === Page.SignUp) {
             setActivePage(Page.Home);
         }
         fetchData(session.user.id);
@@ -221,7 +229,8 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [isLandingDomain, activePage]);
+    // Removido activePage das dependências para evitar reset de navegação
+  }, [isLandingDomain]); 
   
   const fetchData = async (userId: string) => {
       // Only show full screen loading if we don't have a profile loaded yet.
