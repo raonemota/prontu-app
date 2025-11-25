@@ -15,6 +15,10 @@ import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 
+// Configuração dos Domínios
+const APP_DOMAIN = 'app.prontu.ia.br';
+const LANDING_DOMAIN = 'www.prontu.ia.br';
+
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
@@ -35,9 +39,19 @@ const getSortableDate = (dateStr: string | null | undefined): number => {
 }
 
 const App: React.FC = () => {
+  // Verificação de Domínio
+  const isLandingDomain = useMemo(() => {
+    const hostname = window.location.hostname;
+    // Considera landing se for o domínio principal ou www
+    // Se for localhost, consideramos 'app' para facilitar desenvolvimento, a menos que especificado
+    return hostname === 'prontu.ia.br' || hostname === 'www.prontu.ia.br';
+  }, []);
+
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-  const [activePage, setActivePage] = useState<Page>(Page.Home);
+  
+  // Se for domínio de Landing, inicia na Landing. Se for App, inicia no Login/Home
+  const [activePage, setActivePage] = useState<Page>(isLandingDomain ? Page.Landing : Page.Login);
   
   const [patients, setPatients] = useState<Patient[]>([]);
   const [deactivatedPatients, setDeactivatedPatients] = useState<Patient[]>([]);
@@ -131,13 +145,22 @@ const App: React.FC = () => {
 
         setSession(session);
         if (session) {
+          // Se estamos no domínio da Landing e o usuário tem sessão, redirecionar para o App
+          if (isLandingDomain) {
+             window.location.href = `https://${APP_DOMAIN}`;
+             return;
+          }
+
+          setActivePage(Page.Home);
           fetchData(session.user.id);
         } else {
           setLoading(false);
+          // Se não houver sessão:
+          // isLandingDomain = true -> Fica na Landing Page
+          // isLandingDomain = false -> Fica no Login (definido no useState inicial)
         }
       } catch (error) {
         console.error("Error getting session:", getErrorMessage(error));
-        // If the refresh token is invalid or missing, force sign out to clear bad state
         await supabase.auth.signOut();
         setSession(null);
         setLoading(false);
@@ -146,7 +169,6 @@ const App: React.FC = () => {
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Cast event to string to avoid TypeScript errors
       const eventType = event as string;
 
       if (eventType === 'SIGNED_OUT' || eventType === 'USER_DELETED') {
@@ -157,6 +179,12 @@ const App: React.FC = () => {
         setUserProfile(null);
         setClinics([]);
         setLoading(false);
+        
+        // Se sair no domínio do App, vai para Login
+        // Se sair no domínio da Landing (raro, mas possível), fica na Landing
+        if (!isLandingDomain) {
+            setActivePage(Page.Login);
+        }
         return;
       }
       
@@ -164,12 +192,21 @@ const App: React.FC = () => {
           console.warn("Token refresh revoked.");
           setSession(null);
           setLoading(false);
+          setActivePage(isLandingDomain ? Page.Landing : Page.Login);
           return;
       }
 
       setSession(session);
       if (session) {
-        // Always try to fetch data to ensure freshness, but fetchData handles the loading state gracefully
+        // Redirecionamento de domínio cruzado se necessário
+        if (isLandingDomain) {
+            window.location.href = `https://${APP_DOMAIN}`;
+            return;
+        }
+
+        if (activePage === Page.Login || activePage === Page.SignUp) {
+            setActivePage(Page.Home);
+        }
         fetchData(session.user.id);
       } else {
         setPatients([]);
@@ -184,7 +221,7 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [isLandingDomain, activePage]);
   
   const fetchData = async (userId: string) => {
       // Only show full screen loading if we don't have a profile loaded yet.
@@ -193,7 +230,6 @@ const App: React.FC = () => {
       }
       
       try {
-          // Update last_sign_in_at silently
           await supabase
             .from('users')
             .update({ last_sign_in_at: new Date().toISOString() })
@@ -375,13 +411,11 @@ const App: React.FC = () => {
 
       const newAppointments: Omit<Appointment, 'id'>[] = [];
 
-      // Filter active patients who have an appointment on this day of week
       const relevantPatients = patients.filter(p =>
         Array.isArray(p.appointment_days) && p.appointment_days.includes(dayOfWeek)
       );
 
       for (const patient of relevantPatients) {
-        // Check if appointment exists locally
         const exists = appointments.some(a => a.patient_id === patient.id && a.date === dateString);
         if (!exists) {
            newAppointments.push({
@@ -447,27 +481,21 @@ const App: React.FC = () => {
   };
 
   const deleteAppointment = async (appointmentId: number): Promise<boolean> => {
-    console.log(`[App.tsx] deleteAppointment: Tentando excluir agendamento ID: ${appointmentId}`);
     try {
-      console.log(`[App.tsx] deleteAppointment: Chamando RPC 'delete_appointment_for_user'`);
       const { error } = await supabase.rpc('delete_appointment_for_user', { 
         appointment_id_to_delete: appointmentId 
       });
 
-      if (error) {
-        console.error("[App.tsx] deleteAppointment: Erro retornado pelo RPC:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log(`[App.tsx] deleteAppointment: RPC executado com sucesso. Atualizando estado.`);
       setAppointments(prev => prev.filter(app => app.id !== appointmentId));
       alert('Agendamento excluído com sucesso!');
       return true;
 
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
-      console.error(`[App.tsx] deleteAppointment: Falha na exclusão. Erro: ${errorMessage}`);
-      alert(`Erro ao deletar agendamento: ${errorMessage}\n\nVerifique se a função 'delete_appointment_for_user' foi criada no editor SQL do Supabase.`);
+      console.error(`Falha na exclusão. Erro: ${errorMessage}`);
+      alert(`Erro ao deletar agendamento: ${errorMessage}`);
       return false;
     }
   };
@@ -506,12 +534,13 @@ const App: React.FC = () => {
   const allPatients = useMemo(() => [...patients, ...deactivatedPatients], [patients, deactivatedPatients]);
   
   const renderPage = () => {
-    // Landing Page accessible even if not fully loaded (for logout flow or direct link)
-    if (activePage === Page.Landing) {
+    // Se estiver no domínio da Landing Page, força a renderização dela
+    // a menos que esteja em localhost (dev) e force a navegação
+    if (isLandingDomain) {
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
 
-    if (loading || !userProfile) {
+    if (loading || (!userProfile && session)) {
         return (
             <div className="flex items-center justify-center" style={{height: 'calc(100vh - 5rem)'}}>
                 <p className="text-xl font-semibold text-primary">Carregando dados do usuário...</p>
@@ -529,7 +558,7 @@ const App: React.FC = () => {
           updateAppointmentDetails={updateAppointmentDetails}
           deleteAppointment={deleteAppointment}
           addAppointment={addAppointment}
-          user={userProfile}
+          user={userProfile!}
           updateUser={updateUserProfile}
           theme={theme}
           toggleTheme={toggleTheme}
@@ -544,14 +573,14 @@ const App: React.FC = () => {
         deactivatePatient={deactivatePatient} 
         clinics={clinics} 
         setActivePage={setActivePage} 
-        user={userProfile}
+        user={userProfile!}
       />;
       case Page.Reports:
         return <ReportsPage 
           allPatients={allPatients}
           appointments={appointments} 
           clinics={clinics}
-          user={userProfile}
+          user={userProfile!}
           setActivePage={setActivePage} 
         />;
       case Page.Clinics:
@@ -563,7 +592,24 @@ const App: React.FC = () => {
           setActivePage={setActivePage}
         />;
       case Page.Admin:
-        return <AdminPage setActivePage={setActivePage} currentUser={userProfile} />;
+        return <AdminPage setActivePage={setActivePage} currentUser={userProfile!} />;
+      // Caso esteja no domínio do App mas tente acessar landing, redireciona para home ou login
+      case Page.Landing:
+         return session ? <HomePage 
+            patients={patients} 
+            allPatients={allPatients}
+            appointments={appointments} 
+            updateAppointmentStatus={updateAppointmentStatus}
+            updateAppointmentDetails={updateAppointmentDetails}
+            deleteAppointment={deleteAppointment}
+            addAppointment={addAppointment}
+            user={userProfile!}
+            updateUser={updateUserProfile}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            ensureAppointmentsForDate={ensureAppointmentsForDate}
+            setActivePage={setActivePage}
+         /> : <LoginPage setActivePage={setActivePage} />;
       default:
         return <HomePage 
           patients={patients} 
@@ -573,7 +619,7 @@ const App: React.FC = () => {
           updateAppointmentDetails={updateAppointmentDetails}
           deleteAppointment={deleteAppointment}
           addAppointment={addAppointment}
-          user={userProfile}
+          user={userProfile!}
           updateUser={updateUserProfile}
           theme={theme}
           toggleTheme={toggleTheme}
@@ -583,7 +629,8 @@ const App: React.FC = () => {
     }
   };
 
-  if (loading && !session && activePage !== Page.Landing) {
+  // Se estiver carregando, mostra tela de loading genérica
+  if (loading && !session && !isLandingDomain) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
             <p className="text-xl font-semibold text-primary">Carregando...</p>
@@ -593,9 +640,9 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-black">
-      {/* Remove max-w restriction for Landing Page to allow full width hero */}
-      <div className={`w-full ${activePage === Page.Landing ? '' : 'max-w-[800px]'} mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text`}>
-        {!session && activePage !== Page.Landing ? (
+      {/* Se for landing domain, usa width full, se não, limita a 800px (app mobile view) */}
+      <div className={`w-full ${isLandingDomain ? '' : 'max-w-[800px]'} mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text`}>
+        {!session && !isLandingDomain ? (
             <div className="flex items-center justify-center min-h-screen px-4">
               {activePage === Page.SignUp ? (
                 <SignUpPage setActivePage={setActivePage} />
@@ -605,7 +652,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {activePage === Page.Landing ? (
+              {isLandingDomain ? (
                  <main className="p-0 pb-0">
                     {renderPage()}
                  </main>
@@ -614,7 +661,8 @@ const App: React.FC = () => {
                     {renderPage()}
                  </main>
               )}
-              {activePage !== Page.Landing && (
+              {/* Só mostra a BottomNav se NÃO for Landing Domain */}
+              {!isLandingDomain && session && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}
               <InstallPrompt />

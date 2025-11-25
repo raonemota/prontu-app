@@ -12,8 +12,20 @@ interface PremiumAlertModalProps {
   navigateTo?: (page: Page) => void;
 }
 
+const LANDING_URL = "https://www.prontu.ia.br";
+
 const PremiumAlertModal: React.FC<PremiumAlertModalProps> = ({ isOpen, onClose, title, message, navigateTo }) => {
   if (!isOpen) return null;
+  
+  const handleNavigate = () => {
+      if (window.location.hostname.includes('localhost') && navigateTo) {
+          onClose();
+          navigateTo(Page.Landing);
+      } else {
+          // Em produção, vai para a Landing Page externa
+          window.location.href = `${LANDING_URL}#pricing`;
+      }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-6 backdrop-blur-sm animate-fade-in">
@@ -40,7 +52,7 @@ const PremiumAlertModal: React.FC<PremiumAlertModalProps> = ({ isOpen, onClose, 
             </p>
 
             <button 
-                onClick={navigateTo ? () => { onClose(); navigateTo(Page.Landing); } : onClose}
+                onClick={navigateTo ? handleNavigate : onClose}
                 className="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-transform active:scale-95"
             >
                 {navigateTo ? 'Ver Planos Premium' : 'Entendi'}

@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Patient, Appointment, AppointmentStatus } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
+import { SearchableSelect } from './SearchableSelect';
 
 interface AddAppointmentModalProps {
   isOpen: boolean;
@@ -31,6 +32,13 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({ isOpen, onClo
     onClose();
   };
 
+  const patientOptions = useMemo(() => {
+      return patients.map(p => ({
+          value: p.id,
+          label: p.name
+      }));
+  }, [patients]);
+
   const inputStyles = "mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
@@ -49,12 +57,15 @@ const AddAppointmentModal: React.FC<AddAppointmentModalProps> = ({ isOpen, onClo
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={labelStyles}>Paciente</label>
-              <select value={patient_id} onChange={(e) => setPatientId(e.target.value)} required className={inputStyles}>
-                <option value="" disabled>Selecione um paciente</option>
-                {patients.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SearchableSelect 
+                    options={patientOptions}
+                    value={patient_id}
+                    onChange={(val) => setPatientId(String(val))}
+                    placeholder="Busque ou selecione um paciente..."
+                    required={true}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

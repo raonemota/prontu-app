@@ -8,6 +8,8 @@ interface LoginPageProps {
     setActivePage: (page: Page) => void;
 }
 
+const LANDING_URL = "https://www.prontu.ia.br";
+
 const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +25,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
       setError(error.message === "Invalid login credentials" ? "E-mail ou senha inválidos." : error.message);
     }
     setLoading(false);
+  };
+  
+  const goToLanding = () => {
+    // Se estiver rodando em localhost, usa o setActivePage para teste
+    if (window.location.hostname.includes('localhost')) {
+        setActivePage(Page.Landing);
+    } else {
+        // Em produção, redireciona para o domínio principal
+        window.location.href = LANDING_URL;
+    }
   };
   
   const inputStyles = "mt-1 w-full px-4 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
@@ -90,7 +102,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
                     Conheça nossos planos e funcionalidades exclusivas.
                 </p>
                 <button 
-                    onClick={() => setActivePage(Page.Landing)}
+                    onClick={goToLanding}
                     className="text-sm font-semibold text-secondary hover:text-teal-700 hover:underline transition-colors"
                 >
                     Ver Planos e Preços &rarr;

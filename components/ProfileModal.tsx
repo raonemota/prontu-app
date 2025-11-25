@@ -16,6 +16,8 @@ interface ProfileModalProps {
   navigateTo?: (page: Page) => void;
 }
 
+const LANDING_URL = "https://www.prontu.ia.br";
+
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo }) => {
   const [formData, setFormData] = useState({ full_name: '', role: '', profile_pic: '' });
   const [newPassword, setNewPassword] = useState('');
@@ -82,6 +84,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
   const handleLogoff = async () => {
       await supabase.auth.signOut();
       onClose();
+  };
+  
+  const goToPremium = () => {
+      if (window.location.hostname.includes('localhost') && navigateTo) {
+          onClose();
+          navigateTo(Page.Landing);
+      } else {
+          // Em produção, vai para a Landing Page externa para ver preços
+          window.location.href = `${LANDING_URL}#pricing`;
+      }
   };
 
   const handleInstallApp = async () => {
@@ -181,7 +193,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
             {navigateTo && (
               <button 
                   type="button" 
-                  onClick={() => { onClose(); navigateTo(Page.Landing); }}
+                  onClick={goToPremium}
                   className="w-full py-3 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white rounded-lg font-bold shadow-md hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
                 >
                     <StarIcon className="w-5 h-5 text-white" />

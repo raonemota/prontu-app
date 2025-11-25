@@ -3,7 +3,6 @@ import React from 'react';
 import { Page } from '../types';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
-import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
 import { ChartIcon } from '../components/icons/ChartIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
 import { StarIcon } from '../components/icons/StarIcon';
@@ -13,6 +12,8 @@ interface LandingPageProps {
   isLoggedIn: boolean;
 }
 
+const APP_URL = "https://app.prontu.ia.br";
+
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
 
   const handleSubscribe = (plan: string) => {
@@ -20,6 +21,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
     const message = `Olá! Gostaria de assinar o plano ${plan} do Prontu.`;
     const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`; // Substitua pelo número real
     window.open(whatsappUrl, '_blank');
+  };
+
+  const navigateToApp = () => {
+      // Se estiver rodando em localhost, usa o setActivePage para teste
+      if (window.location.hostname.includes('localhost')) {
+          setActivePage(isLoggedIn ? Page.Home : Page.Login);
+      } else {
+          // Em produção, redireciona para o subdomínio
+          window.location.href = APP_URL;
+      }
   };
 
   return (
@@ -31,10 +42,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-8 md:h-10 w-auto" />
             </div>
             <button 
-                onClick={() => setActivePage(isLoggedIn ? Page.Home : Page.Login)}
+                onClick={navigateToApp}
                 className="text-sm font-medium text-gray-600 dark:text-dark-subtext hover:text-primary transition-colors flex items-center gap-2 border border-gray-200 dark:border-dark-border px-4 py-2 rounded-full hover:bg-gray-50 dark:hover:bg-dark-card"
             >
-                {isLoggedIn ? <><ArrowLeftIcon className="w-4 h-4" /> Voltar ao App</> : 'Fazer Login'}
+                {isLoggedIn ? 'Ir para o App' : 'Fazer Login'}
             </button>
         </div>
       </nav>
@@ -66,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 Quero ser Premium
             </button>
             <button 
-                onClick={() => setActivePage(Page.Login)}
+                onClick={navigateToApp}
                 className="px-10 py-4 bg-white dark:bg-dark-card text-gray-700 dark:text-dark-text border border-gray-200 dark:border-dark-border rounded-full font-bold text-lg hover:bg-gray-50 dark:hover:bg-dark-border transition-all w-full sm:w-auto"
             >
                 Entrar Grátis
