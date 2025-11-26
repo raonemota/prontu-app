@@ -16,11 +16,17 @@ const APP_URL = "https://app.prontu.ia.br";
 
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
 
-  const handleSubscribe = (plan: string) => {
-    // Exemplo de integração (WhatsApp ou Gateway de Pagamento)
-    const message = `Olá! Gostaria de assinar o plano ${plan} do Prontu.`;
-    const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`; // Substitua pelo número real
-    window.open(whatsappUrl, '_blank');
+  const handleSubscribe = (plan: 'Mensal' | 'Semestral' | 'Anual') => {
+    const links = {
+        'Mensal': 'https://pay.kiwify.com.br/sBnlFQM',
+        'Semestral': 'https://pay.kiwify.com.br/Ghj8s5D',
+        'Anual': 'https://pay.kiwify.com.br/bmxvXLR'
+    };
+
+    const url = links[plan];
+    if (url) {
+        window.open(url, '_blank');
+    }
   };
 
   const navigateToApp = () => {

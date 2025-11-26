@@ -7,11 +7,14 @@ import { PencilIcon } from '../components/icons/PencilIcon';
 import { TrashIcon } from '../components/icons/TrashIcon';
 import { supabase } from '../supabaseClient';
 import EditUserModal from '../components/EditUserModal';
+import { CheckIcon } from '../components/icons/CheckIcon';
 
 interface AdminPageProps {
   setActivePage: (page: Page) => void;
   currentUser: User;
 }
+
+const KIWIFY_WEBHOOK_URL = "https://jqvtlpuzkjqliwobiruc.supabase.co/functions/v1/kiwify-webhook?token=345lgtcpney";
 
 const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,6 +25,16 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
   // Estados para exclusão
   const [isDeleting, setIsDeleting] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  // Estados para Teste de Webhook
+  const [webhookData, setWebhookData] = useState({
+    email: '',
+    status: 'paid',
+    plan: 'Prontu Premium (Mensal)',
+    fullName: 'Teste Kiwify'
+  });
+  const [webhookSending, setWebhookSending] = useState(false);
+  const [webhookResponse, setWebhookResponse] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAllUsers = async () => {
@@ -93,6 +106,47 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
       }
   };
 
+  const handleTestWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWebhookSending(true);
+    setWebhookResponse(null);
+
+    // Constrói um payload simulando o padrão da Kiwify
+    const payload = {
+      order_id: `test_${Math.floor(Math.random() * 100000)}`,
+      order_status: webhookData.status,
+      product_name: webhookData.plan,
+      customer: {
+        email: webhookData.email,
+        full_name: webhookData.fullName,
+        mobile: "+5511999999999"
+      },
+      subscription_id: `sub_${Math.floor(Math.random() * 100000)}`,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const response = await fetch(KIWIFY_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setWebhookResponse(`Sucesso! Status: ${response.status}`);
+      } else {
+        const text = await response.text();
+        setWebhookResponse(`Erro: ${response.status} - ${text}`);
+      }
+    } catch (error: any) {
+      setWebhookResponse(`Erro na requisição: ${error.message}`);
+    } finally {
+      setWebhookSending(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -138,8 +192,92 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
         onBack={() => setActivePage(Page.Home)}
         icon={<ShieldCheckIcon className="w-6 h-6" />}
       />
+      
+      {/* Seção de Teste de Webhook */}
+      <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md space-y-4 border border-blue-200 dark:border-blue-900">
+        <h3 className="text-lg font-bold text-dark dark:text-dark-text flex items-center gap-2">
+          <span>⚡</span> Ambiente de Teste de Webhook (Kiwify)
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-dark-subtext">
+          Simule eventos de pagamento da Kiwify para testar a integração com o Supabase.
+        </p>
+
+        <form onSubmit={handleTestWebhook} className="space-y-4 bg-gray-50 dark:bg-dark-bg p-4 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Email do Cliente (deve existir no banco)</label>
+              <input
+                type="email"
+                value={webhookData.email}
+                onChange={(e) => setWebhookData({...webhookData, email: e.target.value})}
+                placeholder="ex: usuario@email.com"
+                required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card rounded-lg text-dark dark:text-dark-text text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Nome do Cliente (Simulado)</label>
+              <input
+                type="text"
+                value={webhookData.fullName}
+                onChange={(e) => setWebhookData({...webhookData, fullName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card rounded-lg text-dark dark:text-dark-text text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Status do Pedido</label>
+              <select
+                value={webhookData.status}
+                onChange={(e) => setWebhookData({...webhookData, status: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card rounded-lg text-dark dark:text-dark-text text-sm"
+              >
+                <option value="paid">Pago (paid)</option>
+                <option value="refunded">Reembolsado (refunded)</option>
+                <option value="chargeback">Chargeback</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Produto / Plano</label>
+              <select
+                value={webhookData.plan}
+                onChange={(e) => setWebhookData({...webhookData, plan: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card rounded-lg text-dark dark:text-dark-text text-sm"
+              >
+                <option value="Prontu Premium (Mensal)">Prontu Premium (Mensal)</option>
+                <option value="Prontu Premium (Semestral)">Prontu Premium (Semestral)</option>
+                <option value="Prontu Premium (Anual)">Prontu Premium (Anual)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between pt-2">
+             <div className="text-sm font-mono text-gray-600 dark:text-gray-400 truncate max-w-[50%]">
+                Token: ...{KIWIFY_WEBHOOK_URL.slice(-6)}
+             </div>
+             <button
+              type="submit"
+              disabled={webhookSending}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {webhookSending ? 'Enviando...' : (
+                <>
+                  <span>Enviar Webhook</span>
+                  <CheckIcon className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+          
+          {webhookResponse && (
+            <div className={`mt-2 p-2 rounded text-xs font-mono ${webhookResponse.includes('Sucesso') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {webhookResponse}
+            </div>
+          )}
+        </form>
+      </div>
 
       <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md space-y-4">
+        <h3 className="text-lg font-bold text-dark dark:text-dark-text">Lista de Usuários</h3>
         <input
           type="text"
           placeholder="Buscar usuário por nome ou email..."

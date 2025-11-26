@@ -668,7 +668,7 @@ const App: React.FC = () => {
               {!isLandingDomain && session && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}
-              <InstallPrompt />
+              {!isLandingDomain && <InstallPrompt />}
             </>
           )}
       </div>
