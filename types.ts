@@ -3,6 +3,7 @@ export enum Page {
   Login = 'Login',
   SignUp = 'SignUp',
   Home = 'Home',
+  Agenda = 'Agenda',
   Patients = 'Patients',
   Reports = 'Reports',
   Clinics = 'Clinics',
@@ -61,7 +62,8 @@ export interface Patient {
   category: Category;
   session_value: number;
   appointment_days: number[]; // 0 for Sunday, 1 for Monday, etc.
-  appointment_time: string; // "HH:MM"
+  appointment_time: string; // "HH:MM" (Mantido como fallback ou horário principal)
+  appointment_times?: Record<string, string>; // Novo campo: Mapa de dia (string "0"-"6") para horário ("HH:MM")
   profile_pic: string;
   clinic_id: number | null;
   clinics: { name: string } | null; // From Supabase join

@@ -154,6 +154,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
   const inputStyles = "mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
+  // Logic to determine if "Seja Premium" button should be hidden
+  // Hide if: is Admin OR plan is 'beta' OR plan is 'premium'
+  const currentPlan = (user.tipo_assinante || user.plan || '').toLowerCase();
+  const shouldShowPremiumButton = !user.is_admin && currentPlan !== 'beta' && currentPlan !== 'premium';
+
   if (!isOpen) return null;
 
   return (
@@ -190,7 +195,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
           </div>
 
           <div className="space-y-3 mb-6">
-            {navigateTo && (
+            {navigateTo && shouldShowPremiumButton && (
               <button 
                   type="button" 
                   onClick={goToPremium}

@@ -9,6 +9,7 @@ import { SearchIcon } from '../components/icons/SearchIcon';
 import { CloseIcon } from '../components/icons/CloseIcon';
 import SubPageHeader from '../components/SubPageHeader';
 import { UsersIcon } from '../components/icons/UsersIcon';
+import { ClinicIcon } from '../components/icons/ClinicIcon';
 import PremiumAlertModal from '../components/PremiumAlertModal';
 
 interface PatientsPageProps {
@@ -106,6 +107,14 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
         onBack={() => setActivePage(Page.Home)}
         icon={<UsersIcon className="w-6 h-6" />}
       >
+        <button 
+          onClick={() => setActivePage(Page.Clinics)} 
+          className="p-2 bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-dark-subtext rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 
+          aria-label="Gerenciar Clínicas"
+          title="Gerenciar Clínicas"
+        >
+          <ClinicIcon className="w-5 h-5" />
+        </button>
         <button 
           onClick={() => setActivePage(Page.DeactivatedPatients)} 
           className="p-2 bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-dark-subtext rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" 

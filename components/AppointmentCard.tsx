@@ -1,7 +1,7 @@
 import React from 'react';
 import { Appointment, Patient, AppointmentStatus } from '../types';
 import { ClockIcon } from './icons/ClockIcon';
-import { BuildingIcon } from './icons/BuildingIcon';
+import { ClinicIcon } from './icons/ClinicIcon';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -29,8 +29,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
   // Provide fallbacks for potentially null patient data
   const patientName = patient.name || 'Nome não informado';
   const patientProfilePic = patient.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
-  const patientHealthPlan = patient.health_plan || 'N/A';
-
+  
   // Format time to HH:MM (remove seconds if present)
   const formattedTime = appointment.time ? appointment.time.slice(0, 5) : '';
 
@@ -56,7 +55,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
             )}
             {patient.clinics?.name && (
                 <div className="flex items-center">
-                    <BuildingIcon className="w-3 h-3 mr-1 text-gray-400" />
+                    <ClinicIcon className="w-3 h-3 mr-1 text-gray-400" />
                     <span className="truncate max-w-[120px]">{patient.clinics.name}</span>
                 </div>
             )}

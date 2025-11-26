@@ -9,6 +9,7 @@ import { PlusIcon } from '../components/icons/PlusIcon';
 import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
 import { ChevronDoubleLeftIcon } from '../components/icons/ChevronDoubleLeftIcon';
 import { ChevronDoubleRightIcon } from '../components/icons/ChevronDoubleRightIcon';
+import FeatureAnnouncementModal from '../components/FeatureAnnouncementModal';
 
 // Add setActivePage to interface to allow navigation from profile modal
 interface HomePageProps {
@@ -368,6 +369,9 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
             navigateTo={setActivePage}
         />
       )}
+
+      {/* Feature Announcement Modal */}
+      <FeatureAnnouncementModal />
     </div>
   );
 };

@@ -14,6 +14,7 @@ import DeactivatedPatientsPage from './pages/DeactivatedPatientsPage';
 import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
+import AgendaPage from './pages/AgendaPage';
 
 // Configuração dos Domínios
 const APP_DOMAIN = 'app.prontu.ia.br';
@@ -410,7 +411,7 @@ const App: React.FC = () => {
   const ensureAppointmentsForDate = async (date: Date) => {
       if (!session) return;
       const dateString = date.toISOString().split('T')[0];
-      const dayOfWeek = date.getDay();
+      const dayOfWeek = date.getDay(); // 0 (Dom) a 6 (Sab)
 
       const newAppointments: Omit<Appointment, 'id'>[] = [];
 
@@ -421,11 +422,18 @@ const App: React.FC = () => {
       for (const patient of relevantPatients) {
         const exists = appointments.some(a => a.patient_id === patient.id && a.date === dateString);
         if (!exists) {
+           // Verifica se existe um horário específico para este dia
+           // As chaves do JSONB/Objeto geralmente são strings no Supabase
+           const specificTime = patient.appointment_times ? patient.appointment_times[dayOfWeek.toString()] : null;
+           
+           // Se existir horário específico usa ele, caso contrário usa o fallback appointment_time
+           const timeToUse = specificTime || patient.appointment_time || '09:00';
+
            newAppointments.push({
               patient_id: patient.id,
               user_id: session.user.id,
               date: dateString,
-              time: patient.appointment_time,
+              time: timeToUse,
               status: AppointmentStatus.NoStatus,
           });
         }
@@ -566,6 +574,13 @@ const App: React.FC = () => {
           theme={theme}
           toggleTheme={toggleTheme}
           ensureAppointmentsForDate={ensureAppointmentsForDate}
+          setActivePage={setActivePage}
+        />;
+      case Page.Agenda:
+        return <AgendaPage 
+          patients={patients}
+          allPatients={allPatients}
+          appointments={appointments}
           setActivePage={setActivePage}
         />;
       case Page.Patients:

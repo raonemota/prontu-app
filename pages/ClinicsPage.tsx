@@ -4,7 +4,7 @@ import { Clinic, Page } from '../types';
 import AddClinicModal from '../components/AddClinicModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import SubPageHeader from '../components/SubPageHeader';
-import { BuildingIcon } from '../components/icons/BuildingIcon';
+import { ClinicIcon } from '../components/icons/ClinicIcon';
 
 interface ClinicsPageProps {
   clinics: Clinic[];
@@ -38,8 +38,8 @@ const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateCli
     <div className="space-y-6">
       <SubPageHeader 
         title="Minhas Clínicas" 
-        onBack={() => setActivePage(Page.Home)}
-        icon={<BuildingIcon className="w-6 h-6" />}
+        onBack={() => setActivePage(Page.Patients)}
+        icon={<ClinicIcon className="w-6 h-6" />}
       >
         <button onClick={() => handleOpenModal()} className="p-2 bg-primary/10 text-primary rounded-full" aria-label="Adicionar Clínica">
           <PlusIcon className="w-6 h-6" />
@@ -51,7 +51,7 @@ const ClinicsPage: React.FC<ClinicsPageProps> = ({ clinics, addClinic, updateCli
           <div key={clinic.id} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-md flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-primary/10 rounded-full">
-                <BuildingIcon className="w-6 h-6 text-primary" />
+                <ClinicIcon className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <p className="font-semibold text-dark dark:text-dark-text">{clinic.name}</p>

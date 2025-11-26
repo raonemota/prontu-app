@@ -4,7 +4,7 @@ import { Page } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
 import { UsersIcon } from './icons/UsersIcon';
 import { ChartIcon } from './icons/ChartIcon';
-import { BuildingIcon } from './icons/BuildingIcon';
+import { CalendarDaysIcon } from './icons/CalendarDaysIcon';
 
 interface BottomNavProps {
   activePage: Page;
@@ -28,16 +28,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ activePage, setActivePage }) => {
         onClick={() => setActivePage(Page.Home)}
       />
       <NavItem
+        icon={<CalendarDaysIcon className="w-6 h-6 mb-1" />}
+        label="Agenda"
+        isActive={activePage === Page.Agenda}
+        onClick={() => setActivePage(Page.Agenda)}
+      />
+      <NavItem
         icon={<UsersIcon className="w-6 h-6 mb-1" />}
         label="Pacientes"
         isActive={activePage === Page.Patients}
         onClick={() => setActivePage(Page.Patients)}
-      />
-       <NavItem
-        icon={<BuildingIcon className="w-6 h-6 mb-1" />}
-        label="Clínicas"
-        isActive={activePage === Page.Clinics}
-        onClick={() => setActivePage(Page.Clinics)}
       />
       <NavItem
         icon={<ChartIcon className="w-6 h-6 mb-1" />}

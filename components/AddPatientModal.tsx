@@ -4,6 +4,7 @@ import { Patient, Gender, Category, Clinic } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { CheckIcon } from './icons/CheckIcon';
+import { ClockIcon } from './icons/ClockIcon';
 
 
 interface AddPatientModalProps {
@@ -17,13 +18,13 @@ interface AddPatientModalProps {
 }
 
 const weekDays = [
-  { label: 'Dom', value: 0 },
-  { label: 'Seg', value: 1 },
-  { label: 'Ter', value: 2 },
-  { label: 'Qua', value: 3 },
-  { label: 'Qui', value: 4 },
-  { label: 'Sex', value: 5 },
-  { label: 'Sáb', value: 6 },
+  { label: 'Dom', value: 0, full: 'Domingo' },
+  { label: 'Seg', value: 1, full: 'Segunda-feira' },
+  { label: 'Ter', value: 2, full: 'Terça-feira' },
+  { label: 'Qua', value: 3, full: 'Quarta-feira' },
+  { label: 'Qui', value: 4, full: 'Quinta-feira' },
+  { label: 'Sex', value: 5, full: 'Sexta-feira' },
+  { label: 'Sáb', value: 6, full: 'Sábado' },
 ];
 
 const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDeactivate }) => {
@@ -33,10 +34,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     health_plan: '',
     category: Category.Adult,
     session_value: '',
-    appointment_time: '09:00',
+    // appointment_time removido do estado direto, gerenciado via specificTimes
     clinic_id: null as number | null,
   });
   const [appointment_days, setAppointmentDays] = useState<number[]>([]);
+  // Estado para armazenar horários específicos por dia: chave é o índice do dia (0-6)
+  const [specificTimes, setSpecificTimes] = useState<Record<number, string>>({});
   const [isConfirmingDeactivation, setIsConfirmingDeactivation] = useState(false);
 
   useEffect(() => {
@@ -47,10 +50,31 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
         health_plan: patientToEdit.health_plan || '',
         category: patientToEdit.category || Category.Adult,
         session_value: String(patientToEdit.session_value || ''),
-        appointment_time: patientToEdit.appointment_time || '09:00',
         clinic_id: patientToEdit.clinic_id || null,
       });
-      setAppointmentDays(Array.isArray(patientToEdit.appointment_days) ? patientToEdit.appointment_days : []);
+      
+      const days = Array.isArray(patientToEdit.appointment_days) ? patientToEdit.appointment_days : [];
+      setAppointmentDays(days);
+      
+      // Inicializa os horários específicos
+      const times: Record<number, string> = {};
+      
+      // Se já existir appointment_times no banco, usa ele
+      if (patientToEdit.appointment_times) {
+          Object.entries(patientToEdit.appointment_times).forEach(([dayStr, time]) => {
+              times[parseInt(dayStr)] = time;
+          });
+      }
+      
+      // Para dias que estão selecionados mas não têm horário específico (legado), usa o horário geral
+      days.forEach(day => {
+          if (!times[day]) {
+              times[day] = patientToEdit.appointment_time || '09:00';
+          }
+      });
+      
+      setSpecificTimes(times);
+
     } else {
       // Reset form for "add new" mode
       setFormData({
@@ -59,21 +83,42 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
         health_plan: '',
         category: Category.Adult,
         session_value: '',
-        appointment_time: '09:00',
         clinic_id: null,
       });
       setAppointmentDays([]);
+      setSpecificTimes({});
     }
      // Reset confirmation state when modal opens/changes patient
     setIsConfirmingDeactivation(false);
   }, [patientToEdit, isOpen]);
 
   const handleDayToggle = (dayValue: number) => {
-    setAppointmentDays(prev =>
-      prev.includes(dayValue) ? prev.filter(d => d !== dayValue) : [...prev, dayValue]
-    );
+    setAppointmentDays(prev => {
+      const isSelected = prev.includes(dayValue);
+      if (isSelected) {
+          // Removendo dia: removemos também o horário do estado (opcional, mas limpa a memória)
+          const newTimes = { ...specificTimes };
+          delete newTimes[dayValue];
+          setSpecificTimes(newTimes);
+          return prev.filter(d => d !== dayValue);
+      } else {
+          // Adicionando dia: define um horário padrão (ex: 09:00 ou copia de outro dia)
+          setSpecificTimes(prevTimes => ({
+              ...prevTimes,
+              [dayValue]: '09:00'
+          }));
+          return [...prev, dayValue];
+      }
+    });
   };
   
+  const handleTimeChange = (day: number, time: string) => {
+      setSpecificTimes(prev => ({
+          ...prev,
+          [day]: time
+      }));
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -88,10 +133,22 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
 
     const clinicIdValue = formData.clinic_id ? parseInt(String(formData.clinic_id), 10) : null;
     
+    // Determina o horário principal (fallback) pegando o primeiro horário disponível dos dias selecionados
+    const sortedDays = [...appointment_days].sort();
+    const primaryTime = sortedDays.length > 0 ? specificTimes[sortedDays[0]] : '09:00';
+
+    // Converter chaves de number para string para salvar no JSONB do Supabase
+    const appointmentTimesForDb: Record<string, string> = {};
+    appointment_days.forEach(day => {
+        appointmentTimesForDb[String(day)] = specificTimes[day] || '09:00';
+    });
+
     const submissionData = {
         ...formData,
         session_value: parseFloat(formData.session_value) || 0,
         appointment_days,
+        appointment_time: primaryTime, // Mantém compatibilidade
+        appointment_times: appointmentTimesForDb, // Novo campo estruturado
         // Ensure clinic_id is a valid number or null, never NaN
         clinic_id: isNaN(clinicIdValue as number) ? null : clinicIdValue,
     };
@@ -106,22 +163,18 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
   
   const handleDeactivateClick = () => {
     if (patientToEdit) {
-      console.log(`[handleDeactivateClick] Botão Desativar clicado para o paciente ID: ${patientToEdit.id}`);
-      setIsConfirmingDeactivation(true); // Open the custom confirmation modal
+      setIsConfirmingDeactivation(true); 
     }
   };
 
   const handleConfirmDeactivation = async () => {
     if (patientToEdit) {
-      console.log(`[handleConfirmDeactivation] Usuário confirmou no modal customizado. Chamando onDeactivate...`);
       const success = await onDeactivate(patientToEdit.id);
       if (success) {
-        console.log(`[handleConfirmDeactivation] onDeactivate retornou sucesso. Fechando o modal.`);
-        setIsConfirmingDeactivation(false); // Close confirmation modal
-        onClose(); // Close main modal
+        setIsConfirmingDeactivation(false); 
+        onClose(); 
       } else {
-        console.error(`[handleConfirmDeactivation] onDeactivate retornou falha. O modal de confirmação será fechado, mas o principal permanecerá aberto.`);
-        setIsConfirmingDeactivation(false); // Close confirmation modal on failure to allow retry
+        setIsConfirmingDeactivation(false); 
       }
     }
   };
@@ -206,16 +259,50 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
                 <label className={labelStyles}>Valor da Sessão (R$)</label>
                 <input type="number" step="0.01" name="session_value" value={formData.session_value} onChange={handleChange} required className={inputStyles} />
             </div>
-            <div>
+            
+            {/* Seção de Dias e Horários */}
+            <div className="bg-gray-50 dark:bg-dark-bg p-3 rounded-lg border border-gray-100 dark:border-dark-border">
               <label className={`${labelStyles} mb-2`}>Dias de Atendimento</label>
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 mb-4 overflow-x-auto pb-1">
                 {weekDays.map(day => (
-                  <button type="button" key={day.value} onClick={() => handleDayToggle(day.value)} className={`w-10 h-10 rounded-full text-sm font-semibold transition-colors ${appointment_days.includes(day.value) ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-dark-border text-gray-700 dark:text-dark-text'}`}>
+                  <button 
+                    type="button" 
+                    key={day.value} 
+                    onClick={() => handleDayToggle(day.value)} 
+                    className={`w-9 h-9 flex-shrink-0 rounded-full text-xs font-semibold transition-colors 
+                        ${appointment_days.includes(day.value) 
+                            ? 'bg-primary text-white shadow-md' 
+                            : 'bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-text'}`}
+                  >
                     {day.label}
                   </button>
                 ))}
               </div>
+
+              {appointment_days.length > 0 && (
+                  <div className="space-y-2 animate-fade-in">
+                      <label className="text-xs font-semibold text-gray-500 dark:text-dark-subtext uppercase tracking-wider mb-1 block">Horários por dia</label>
+                      {appointment_days.sort().map(dayIndex => {
+                          const dayInfo = weekDays.find(d => d.value === dayIndex);
+                          return (
+                              <div key={dayIndex} className="flex items-center justify-between bg-white dark:bg-dark-card p-2 rounded-md border border-gray-200 dark:border-dark-border">
+                                  <span className="text-sm font-medium text-dark dark:text-dark-text ml-2">{dayInfo?.full}</span>
+                                  <div className="flex items-center bg-gray-50 dark:bg-dark-bg px-2 py-1 rounded border border-gray-200 dark:border-dark-border">
+                                      <ClockIcon className="w-3 h-3 text-gray-400 mr-2" />
+                                      <input 
+                                          type="time" 
+                                          value={specificTimes[dayIndex] || '09:00'} 
+                                          onChange={(e) => handleTimeChange(dayIndex, e.target.value)}
+                                          className="bg-transparent border-none text-sm font-semibold text-primary focus:ring-0 p-0"
+                                      />
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+              )}
             </div>
+
             <div className="pt-4 flex justify-between items-center">
               <div>
                 {patientToEdit && (
