@@ -1,7 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Appointment, Patient, AppointmentStatus } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
+import { EyeIcon } from './icons/EyeIcon';
+import { EyeSlashIcon } from './icons/EyeSlashIcon';
 import { 
   BarChart, 
   Bar, 
@@ -21,6 +23,7 @@ interface ReportsChartModalProps {
 }
 
 const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, appointments, allPatients }) => {
+  const [showValues, setShowValues] = useState(false);
   
   const data = useMemo(() => {
     // 1. Filter valid appointments (Completed or NoShow)
@@ -81,7 +84,10 @@ const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, 
         <div className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border p-3 rounded-lg shadow-lg">
           <p className="text-sm font-semibold text-dark dark:text-dark-text">{label}</p>
           <p className="text-sm font-bold text-primary">
-            {payload[0].value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {showValues 
+                ? payload[0].value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
+                : 'R$ ****'
+            }
           </p>
         </div>
       );
@@ -100,12 +106,21 @@ const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, 
                 <h3 className="text-lg font-bold text-dark dark:text-dark-text">Faturamento Mensal</h3>
                 <p className="text-xs text-gray-500 dark:text-dark-subtext">Histórico acumulado de atendimentos realizados</p>
             </div>
-            <button 
-                onClick={onClose} 
-                className="text-gray-400 hover:text-gray-600 dark:text-dark-subtext dark:hover:text-dark-text p-1 rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
-            >
-                <CloseIcon className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => setShowValues(!showValues)} 
+                    className="text-gray-500 hover:text-gray-700 dark:text-dark-subtext dark:hover:text-dark-text p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
+                    title={showValues ? "Ocultar valores" : "Mostrar valores"}
+                >
+                    {showValues ? <EyeIcon className="w-6 h-6" /> : <EyeSlashIcon className="w-6 h-6" />}
+                </button>
+                <button 
+                    onClick={onClose} 
+                    className="text-gray-400 hover:text-gray-600 dark:text-dark-subtext dark:hover:text-dark-text p-1 rounded-full hover:bg-gray-200 dark:hover:bg-dark-border transition-colors"
+                >
+                    <CloseIcon className="w-6 h-6" />
+                </button>
+            </div>
         </div>
 
         <div className="p-6 flex-1 overflow-y-auto">
@@ -114,7 +129,10 @@ const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, 
             <div className="bg-primary/10 rounded-xl p-4 mb-6 flex items-center justify-between">
                 <span className="text-sm font-medium text-primary">Total Acumulado (Período)</span>
                 <span className="text-xl font-bold text-primary">
-                    {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {showValues 
+                        ? totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : 'R$ ****'
+                    }
                 </span>
             </div>
 
@@ -142,7 +160,7 @@ const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, 
                                 axisLine={false} 
                                 tickLine={false} 
                                 tick={{ fontSize: 11, fill: '#888' }} 
-                                tickFormatter={(value) => `R$ ${value}`}
+                                tickFormatter={(value) => showValues ? `R$ ${value}` : '****'}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                             <Bar dataKey="value" radius={[4, 4, 0, 0]}>

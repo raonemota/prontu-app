@@ -138,30 +138,62 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
 
       {/* Pricing Section */}
       <section id="pricing" className="px-6 py-24 bg-white dark:bg-dark-bg relative">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-5xl font-bold mb-6">Investimento que se paga</h2>
                 <p className="text-lg text-gray-500 dark:text-dark-subtext">Escolha o plano ideal para o seu momento profissional.</p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8 items-center max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch max-w-7xl mx-auto">
                 
+                {/* Free Plan */}
+                <div className="order-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
+                    <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Gratuito</h3>
+                    <div className="flex items-baseline mb-6">
+                        <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 0,00</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
+                        Para quem está começando a organizar seus atendimentos.
+                    </p>
+                    <ul className="space-y-4 mb-8 flex-1">
+                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Até 5 pacientes
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Agenda básica
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Acesso ao app
+                        </li>
+                    </ul>
+                    <button 
+                        onClick={navigateToApp}
+                        className="w-full py-3 border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                        Criar Conta Grátis
+                    </button>
+                    <div className="mt-3 h-4"></div> {/* Spacer to align with guarantee text */}
+                </div>
+
                 {/* Monthly Plan */}
-                <div className="order-2 md:order-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-8 hover:border-gray-300 transition-colors">
+                <div className="order-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
                     <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Mensal</h3>
                     <div className="flex items-baseline mb-6">
                         <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 9,90</span>
                         <span className="text-gray-400 ml-2">/mês</span>
                     </div>
                     <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
-                        Para quem quer flexibilidade total sem compromisso de longo prazo.
+                        Para quem quer flexibilidade total sem compromisso.
                     </p>
-                    <ul className="space-y-4 mb-8">
+                    <ul className="space-y-4 mb-8 flex-1">
                          <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
                             <CheckIcon className="w-4 h-4 text-green-500" /> Pacientes ilimitados
                         </li>
                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
                             <CheckIcon className="w-4 h-4 text-green-500" /> Exportação de relatórios
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Backup na nuvem
                         </li>
                     </ul>
                     <button 
@@ -170,10 +202,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     >
                         Assinar Mensal
                     </button>
+                    <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
+                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                    </p>
                 </div>
 
                 {/* Semiannual Plan (Best Value) */}
-                <div className="order-1 md:order-2 bg-gradient-to-br from-primary to-purple-900 text-white rounded-3xl p-8 shadow-2xl transform scale-105 relative z-10 border border-purple-500/30">
+                <div className="order-3 bg-gradient-to-br from-primary to-purple-900 text-white rounded-3xl p-6 shadow-2xl transform md:scale-105 relative z-10 border border-purple-500/30 h-full flex flex-col">
                     <div className="absolute top-0 right-0 left-0 -mt-4 flex justify-center">
                          <div className="bg-yellow-400 text-yellow-900 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-sm">
                             Mais Popular
@@ -185,11 +220,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     </div>
                     <p className="text-white/70 text-sm font-medium mb-6">cobrado a cada 6 meses</p>
                     
-                    <div className="bg-white/10 rounded-xl p-4 mb-8 backdrop-blur-sm">
+                    <div className="bg-white/10 rounded-xl p-3 mb-8 backdrop-blur-sm">
                         <p className="text-xs text-center text-white/80">Equivalente a <strong className="text-white text-base">R$ 8,31</strong> / mês</p>
                     </div>
                     
-                    <ul className="space-y-4 mb-8">
+                    <ul className="space-y-4 mb-8 flex-1">
                         <li className="flex items-center gap-3">
                             <div className="bg-white p-0.5 rounded-full"><CheckIcon className="w-3 h-3 text-primary" /></div>
                             <span className="text-sm font-medium">Economia de 16%</span>
@@ -210,24 +245,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     >
                         Quero Economizar Agora
                     </button>
+                    <p className="text-[10px] text-center mt-3 text-white/90 font-bold flex items-center justify-center gap-1">
+                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                    </p>
                 </div>
 
                 {/* Annual Plan */}
-                <div className="order-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-8 hover:border-gray-300 transition-colors">
+                <div className="order-4 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
                     <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Anual</h3>
                     <div className="flex items-baseline mb-6">
                         <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
                         <span className="text-gray-400 ml-2">/ano</span>
                     </div>
                     <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
-                        Pague uma única vez e garanta um ano inteiro de tranquilidade.
+                        Pague uma única vez e garanta um ano inteiro.
                     </p>
-                     <ul className="space-y-4 mb-8">
+                     <ul className="space-y-4 mb-8 flex-1">
                          <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
                             <CheckIcon className="w-4 h-4 text-green-500" /> Acesso vitalício aos dados
                         </li>
                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
                             <CheckIcon className="w-4 h-4 text-green-500" /> Renovação automática
+                        </li>
+                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Menor valor mensal
                         </li>
                     </ul>
                     <button 
@@ -236,6 +277,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     >
                         Assinar Anual
                     </button>
+                    <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
+                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                    </p>
                 </div>
 
             </div>
@@ -243,7 +287,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
             <div className="mt-16 text-center bg-green-50 dark:bg-green-900/10 p-6 rounded-2xl max-w-3xl mx-auto border border-green-100 dark:border-green-900/30">
                  <p className="text-sm text-green-800 dark:text-green-300 flex items-center justify-center gap-3 font-medium">
                     <ShieldCheckIcon className="w-6 h-6" />
-                    <span>Garantia de Satisfação: Teste por 7 dias. Se não gostar, devolvemos seu dinheiro.</span>
+                    <span>Garantia de Satisfação: Teste o plano Premium por 7 dias. Se não gostar, devolvemos seu dinheiro.</span>
                  </p>
             </div>
         </div>
