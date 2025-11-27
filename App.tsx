@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
@@ -59,6 +58,7 @@ const App: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorState, setErrorState] = useState<string | null>(null);
   
   // Use refs to track state in async functions to avoid closure staleness
   const userProfileRef = useRef<User | null>(null);
@@ -95,6 +95,22 @@ const App: React.FC = () => {
   useEffect(() => {
     activePageRef.current = activePage;
   }, [activePage]);
+
+  // Safety Timeout for Loading
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      if (loading && !isLandingDomain) {
+        console.warn("Loading timed out - safety fallback triggered");
+        setLoading(false);
+        if (!session && !userProfile) {
+            // Se demorou demais e não tem nada, assume que não logou ou falhou rede
+            // Não faz nada drástico, apenas libera a tela, o renderPage vai decidir o que mostrar
+        }
+      }
+    }, 15000); // 15 seconds max load time
+
+    return () => clearTimeout(safetyTimer);
+  }, [loading, session, userProfile, isLandingDomain]);
 
   // Realtime Subscription for User Profile Updates (Plan changes, etc.)
   useEffect(() => {
@@ -186,6 +202,7 @@ const App: React.FC = () => {
         setUserProfile(null);
         setClinics([]);
         setLoading(false);
+        setErrorState(null);
         
         // Se sair no domínio do App, vai para Login
         // Se sair no domínio da Landing (raro, mas possível), fica na Landing
@@ -232,8 +249,10 @@ const App: React.FC = () => {
       if (!userProfileRef.current) {
           setLoading(true);
       }
+      setErrorState(null);
       
       try {
+          // Update last sign in time
           await supabase
             .from('users')
             .update({ last_sign_in_at: new Date().toISOString() })
@@ -249,9 +268,7 @@ const App: React.FC = () => {
               if (!userProfileRef.current) {
                   const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
                   console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
-                  alert(`Não foi possível carregar os dados do seu perfil: ${errorMessage}\n\nIsso pode ser um problema com as permissões de segurança (RLS). Você será desconectado.`);
-                  await supabase.auth.signOut();
-                  return;
+                  throw new Error(errorMessage);
               }
           }
           
@@ -297,7 +314,10 @@ const App: React.FC = () => {
           const errorMessage = getErrorMessage(error);
           console.error("Erro ao buscar dados:", errorMessage);
           if (!userProfileRef.current) {
-              alert(`Não foi possível carregar os dados: ${errorMessage}\n\nPor favor, verifique sua conexão e se as políticas de segurança (RLS) estão configuradas corretamente no seu painel Supabase.`);
+              setErrorState(errorMessage);
+          } else {
+              // Se já temos perfil carregado, mostramos alert, mas não travamos a app
+               alert(`Não foi possível atualizar alguns dados: ${errorMessage}\nVerifique sua conexão.`);
           }
       } finally {
           setLoading(false);
@@ -412,9 +432,6 @@ const App: React.FC = () => {
       if (!session) return;
       
       // FIX: Noon Strategy (Estratégia do Meio-Dia)
-      // Create a cloned date object set to 12:00:00 (Noon) local time.
-      // This prevents issues where 'date' might be 00:00:00 and a timezone/DST shift 
-      // pushes it to 23:00:00 of the previous day, causing the wrong string generation.
       const safeDate = new Date(date);
       safeDate.setHours(12, 0, 0, 0);
 
@@ -555,17 +572,45 @@ const App: React.FC = () => {
   
   const allPatients = useMemo(() => [...patients, ...deactivatedPatients], [patients, deactivatedPatients]);
   
+  const handleRetryFetch = () => {
+      if (session?.user?.id) {
+          fetchData(session.user.id);
+      } else {
+          window.location.reload();
+      }
+  };
+
   const renderPage = () => {
     // Se estiver no domínio da Landing Page, força a renderização dela
     // a menos que esteja em localhost (dev) e force a navegação
     if (isLandingDomain) {
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
+    
+    // Tratamento de Erro de Carregamento
+    if (errorState && session) {
+        return (
+            <div className="flex flex-col items-center justify-center space-y-4 px-6 text-center" style={{height: 'calc(100vh - 5rem)'}}>
+                <div className="text-danger text-5xl mb-2">⚠️</div>
+                <h3 className="text-lg font-bold text-dark dark:text-dark-text">Ops! Algo deu errado.</h3>
+                <p className="text-sm text-gray-500 dark:text-dark-subtext">
+                    {errorState}
+                </p>
+                <button 
+                    onClick={handleRetryFetch}
+                    className="mt-4 px-6 py-2 bg-primary text-white rounded-full font-semibold shadow-md active:scale-95 transition-transform"
+                >
+                    Tentar Novamente
+                </button>
+            </div>
+        );
+    }
 
     if (loading || (!userProfile && session)) {
         return (
-            <div className="flex items-center justify-center" style={{height: 'calc(100vh - 5rem)'}}>
-                <p className="text-xl font-semibold text-primary">Carregando dados do usuário...</p>
+            <div className="flex flex-col items-center justify-center space-y-4" style={{height: 'calc(100vh - 5rem)'}}>
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-lg font-medium text-primary animate-pulse">Carregando...</p>
             </div>
         );
     }
@@ -661,8 +706,9 @@ const App: React.FC = () => {
   // Se estiver carregando, mostra tela de loading genérica
   if (loading && !session && !isLandingDomain) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
-            <p className="text-xl font-semibold text-primary">Carregando...</p>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-xl font-semibold text-primary">Iniciando Prontu...</p>
         </div>
     );
   }
