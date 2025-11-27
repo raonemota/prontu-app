@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Patient, Gender, Category, Clinic } from '../types';
+import { Patient, Gender, Category, Clinic, Page } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { CheckIcon } from './icons/CheckIcon';
@@ -15,6 +15,7 @@ interface AddPatientModalProps {
   patientToEdit: Patient | null;
   clinics: Clinic[];
   onDeactivate: (patientId: number) => Promise<boolean>;
+  navigateTo: (page: Page) => void;
 }
 
 const weekDays = [
@@ -27,7 +28,7 @@ const weekDays = [
   { label: 'Sáb', value: 6, full: 'Sábado' },
 ];
 
-const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDeactivate }) => {
+const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addPatient, updatePatient, patientToEdit, clinics, onDeactivate, navigateTo }) => {
   const [formData, setFormData] = useState({
     name: '',
     gender: Gender.Female,
@@ -196,6 +197,11 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     }
   };
 
+  const handleCreateClinic = () => {
+      onClose();
+      navigateTo(Page.Clinics);
+  };
+
   const inputStyles = "mt-1 w-full px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-dark dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary placeholder-gray-400 dark:placeholder-dark-subtext";
   const labelStyles = "block text-sm font-medium text-gray-700 dark:text-dark-subtext";
 
@@ -244,12 +250,24 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
                 <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputStyles} />
             </div>
              <div>
-                <label className={labelStyles}>Clínica/Local</label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className={labelStyles}>Clínica/Local</label>
+                    <button 
+                        type="button" 
+                        onClick={handleCreateClinic}
+                        className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+                    >
+                        + Cadastrar nova
+                    </button>
+                </div>
                 <select name="clinic_id" value={formData.clinic_id || ''} onChange={handleChange} className={inputStyles}>
                     <option value="">Sem clínica</option>
                     {clinics.map(clinic => (
                         <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
                     ))}
+                    {clinics.length === 0 && (
+                        <option value="" disabled className="text-gray-500">Nenhuma clínica encontrada</option>
+                    )}
                 </select>
             </div>
             

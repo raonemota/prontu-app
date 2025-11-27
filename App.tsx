@@ -59,6 +59,7 @@ const App: React.FC = () => {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   
   // Use refs to track state in async functions to avoid closure staleness
   const userProfileRef = useRef<User | null>(null);
@@ -203,6 +204,7 @@ const App: React.FC = () => {
         setClinics([]);
         setLoading(false);
         setErrorState(null);
+        setRecoveryMode(false);
         
         // Se sair no domínio do App, vai para Login
         // Se sair no domínio da Landing (raro, mas possível), fica na Landing
@@ -218,6 +220,11 @@ const App: React.FC = () => {
           setLoading(false);
           setActivePage(isLandingDomain ? Page.Landing : Page.Login);
           return;
+      }
+
+      if (eventType === 'PASSWORD_RECOVERY') {
+          console.log("Password recovery event detected");
+          setRecoveryMode(true);
       }
 
       setSession(session);
@@ -631,6 +638,7 @@ const App: React.FC = () => {
           toggleTheme={toggleTheme}
           ensureAppointmentsForDate={ensureAppointmentsForDate}
           setActivePage={setActivePage}
+          recoveryMode={recoveryMode}
         />;
       case Page.Agenda:
         return <AgendaPage 
@@ -683,6 +691,7 @@ const App: React.FC = () => {
             toggleTheme={toggleTheme}
             ensureAppointmentsForDate={ensureAppointmentsForDate}
             setActivePage={setActivePage}
+            recoveryMode={recoveryMode}
          /> : <LoginPage setActivePage={setActivePage} />;
       default:
         return <HomePage 
@@ -699,6 +708,7 @@ const App: React.FC = () => {
           toggleTheme={toggleTheme}
           ensureAppointmentsForDate={ensureAppointmentsForDate}
           setActivePage={setActivePage}
+          recoveryMode={recoveryMode}
         />;
     }
   };

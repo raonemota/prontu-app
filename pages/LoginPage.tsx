@@ -15,11 +15,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setResetMessage(null);
+    
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message === "Invalid login credentials" ? "E-mail ou senha inválidos." : error.message);
@@ -27,12 +30,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
     setLoading(false);
   };
   
+  const handleForgotPassword = async () => {
+    if (!email) {
+        setError("Digite seu e-mail acima para recuperar a senha.");
+        return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    setResetMessage(null);
+
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin, // Redireciona para a própria página atual após o clique no email
+        });
+
+        if (error) throw error;
+        
+        setResetMessage("E-mail de recuperação enviado! Verifique sua caixa de entrada (e spam).");
+    } catch (err: any) {
+        setError("Erro ao enviar e-mail: " + err.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+  
   const goToLanding = () => {
-    // Se estiver rodando em localhost, usa o setActivePage para teste
     if (window.location.hostname.includes('localhost')) {
         setActivePage(Page.Landing);
     } else {
-        // Em produção, redireciona para o domínio principal
         window.location.href = LANDING_URL;
     }
   };
@@ -48,7 +74,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
                 <p className="text-gray-500 dark:text-dark-subtext mt-4">Acesse sua conta</p>
             </div>
             
-            {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}
+            {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg text-sm">{error}</p>}
+            {resetMessage && <p className="text-center text-green-800 bg-green-100 dark:bg-green-900/50 dark:text-green-300 p-3 rounded-lg text-sm">{resetMessage}</p>}
 
             <form onSubmit={handleLogin} className="space-y-6">
                 <div>
@@ -58,6 +85,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    placeholder="seu@email.com"
                     className={inputStyles}
                 />
                 </div>
@@ -70,6 +98,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
                     required
                     className={inputStyles}
                 />
+                <div className="flex justify-end mt-1">
+                    <button 
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-xs text-primary hover:underline font-medium"
+                    >
+                        Esqueci minha senha
+                    </button>
+                </div>
                 </div>
                 <div>
                 <button
@@ -77,7 +114,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
                     disabled={loading}
                     className="w-full px-4 py-2 text-white bg-primary rounded-lg font-semibold hover:bg-purple-700 disabled:bg-purple-300 transition-colors"
                 >
-                    {loading ? 'Entrando...' : 'Entrar'}
+                    {loading ? 'Processando...' : 'Entrar'}
                 </button>
                 </div>
             </form>

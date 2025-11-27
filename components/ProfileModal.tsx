@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Page } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -14,11 +13,12 @@ interface ProfileModalProps {
   theme: string;
   toggleTheme: () => void;
   navigateTo?: (page: Page) => void;
+  isRecoveryMode?: boolean;
 }
 
 const LANDING_URL = "https://www.prontu.ia.br";
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo }) => {
+export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onSave, theme, toggleTheme, navigateTo, isRecoveryMode }) => {
   const [formData, setFormData] = useState({ full_name: '', role: '', profile_pic: '' });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -243,15 +243,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
               <input type="text" name="role" value={formData.role} onChange={handleChange} className={inputStyles} />
             </div>
             
-            <div className="border-t dark:border-dark-border pt-4 mt-4">
-                <h3 className="text-lg font-semibold text-dark dark:text-dark-text mb-2">Alterar Senha</h3>
+            <div className={`border-t dark:border-dark-border pt-4 mt-4 ${isRecoveryMode ? 'bg-primary/5 p-4 rounded-xl border-primary/20 border-t-0 ring-1 ring-primary' : ''}`}>
+                <h3 className="text-lg font-semibold text-dark dark:text-dark-text mb-2 flex items-center gap-2">
+                    {isRecoveryMode ? <span className="text-primary">Defina sua Nova Senha</span> : 'Alterar Senha'}
+                </h3>
+                {isRecoveryMode && (
+                    <p className="text-sm text-gray-600 dark:text-dark-subtext mb-4">
+                        Por segurança, defina uma nova senha para sua conta agora.
+                    </p>
+                )}
                 <div>
                     <label className={labelStyles}>Nova Senha</label>
-                    <input type="password" name="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Deixe em branco para não alterar" className={inputStyles} />
+                    <input type="password" name="newPassword" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={isRecoveryMode ? "Digite sua nova senha" : "Deixe em branco para não alterar"} className={inputStyles} />
                 </div>
                  <div>
                     <label className={labelStyles}>Confirmar Nova Senha</label>
-                    <input type="password" name="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Deixe em branco para não alterar" className={inputStyles} />
+                    <input type="password" name="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={isRecoveryMode ? "Confirme sua nova senha" : "Deixe em branco para não alterar"} className={inputStyles} />
                 </div>
             </div>
 

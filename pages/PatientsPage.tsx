@@ -219,6 +219,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
           patientToEdit={patientToEdit}
           clinics={clinics}
           onDeactivate={deactivatePatient}
+          navigateTo={setActivePage}
         />
       )}
 

@@ -276,6 +276,10 @@ ADD COLUMN IF NOT EXISTS data_expiracao_acesso timestamp with time zone,
 ADD COLUMN IF NOT EXISTS subscription_id text,
 ADD COLUMN IF NOT EXISTS customer_id text;
 
+-- Garanta que a coluna phone existe na tabela patients
+ALTER TABLE public.patients 
+ADD COLUMN IF NOT EXISTS phone text;
+
 -- Garanta que a função possa ser chamada
 GRANT ALL ON TABLE public.users TO service_role;
 `;
@@ -347,27 +351,72 @@ serve(async (req) => {
     } else if (order_status === 'refunded' || order_status === 'chargeback') {
         updateData.status_assinatura = 'canceled';
         updateData.tipo_assinante = 'Free';
-        // Não removemos data de expiração imediatamente se quiser manter acesso até o fim, 
-        // mas para reembolso imediato, pode zerar ou setar para agora.
         updateData.data_expiracao_acesso = now.toISOString();
     }
 
-    // 3. Busca e Atualiza Usuário
-    // Procura na tabela pública de users criada pelo seu app
-    const { data: user, error: searchError } = await supabaseAdmin
+    // 3. Busca ou Cria Usuário
+    // Verifica se usuário já existe
+    let { data: user } = await supabaseAdmin
         .from('users')
         .select('id')
         .eq('email', email)
         .single();
 
-    if (searchError || !user) {
-        console.error("User not found:", email);
-        return new Response(JSON.stringify({ message: 'User not found, skipping update' }), {
+    // Se usuário não existe e o pagamento foi aprovado, CRIA a conta
+    if (!user && order_status === 'paid') {
+        console.log("Usuário não encontrado. Criando conta automática para:", email);
+        
+        // Gera uma senha temporária segura (O usuário deve usar "Esqueci a Senha" para acessar)
+        const tempPassword = Math.random().toString(36).slice(-8) + "Aa1!";
+        
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: email,
+            password: tempPassword,
+            email_confirm: true, // Auto confirma o email
+            user_metadata: { full_name: customer.full_name || 'Cliente Kiwify' }
+        });
+
+        if (createError) {
+             console.error("Erro ao criar usuário:", createError);
+             throw createError;
+        }
+
+        user = { id: newUser.user.id };
+
+        // Aguarda um momento para garantir que triggers de banco (public.users) tenham rodado
+        await new Promise(r => setTimeout(r, 1000));
+        
+        // Garante que o registro na tabela public.users existe via Upsert
+        // (Caso o trigger não tenha rodado a tempo ou não exista)
+        const { error: upsertError } = await supabaseAdmin.from('users').upsert({
+             id: user.id,
+             email: email,
+             full_name: customer.full_name || 'Cliente Kiwify',
+             profile_pic: 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png',
+             ...updateData // Já aplica o plano premium na criação
+        });
+        
+        if (upsertError) console.error("Erro no upsert manual:", upsertError);
+        
+        return new Response(JSON.stringify({ 
+            message: 'User created and updated successfully (Shadow Account)', 
+            data: updateData,
+            note: 'User must use Forgot Password to login first time' 
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200, // Retorna 200 para o Kiwify não ficar tentando reenviar
+            status: 200,
+        });
+    } 
+    
+    if (!user) {
+         // Se não foi pago e não existe, apenas ignora
+         return new Response(JSON.stringify({ message: 'User not found and not a paid order' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
         });
     }
 
+    // 4. Se usuário já existe, apenas atualiza
     const { error: updateError } = await supabaseAdmin
         .from('users')
         .update(updateData)
@@ -673,8 +722,14 @@ serve(async (req) => {
                 <div className="p-6 overflow-y-auto flex-1">
                     {helpTab === 'steps' && (
                         <div className="space-y-4 text-sm text-gray-600 dark:text-dark-subtext">
-                            <p>Para o sistema receber pagamentos automaticamente, você precisa criar uma <strong>Supabase Edge Function</strong>. Como você está recebendo erro 404, significa que essa função ainda não existe no seu projeto.</p>
+                            <p>Para o sistema receber pagamentos automaticamente, você precisa criar uma <strong>Supabase Edge Function</strong>. O código foi atualizado para <strong>criar contas automaticamente</strong> se o usuário comprar sem ter cadastro.</p>
                             
+                            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-lg mb-4">
+                                <strong>⚠️ Importante sobre Contas Automáticas:</strong><br/>
+                                Quando um usuário compra sem cadastro, a função cria a conta mas ele não sabe a senha. 
+                                Ele deve usar o botão <strong>"Esqueci minha senha"</strong> na tela de login para definir sua senha e acessar.
+                            </div>
+
                             <ol className="list-decimal pl-5 space-y-3 mt-4">
                                 <li>
                                     <strong>Prepare o Banco de Dados:</strong> Copie o código na aba "1. Banco de Dados (SQL)" e execute no SQL Editor do seu painel Supabase. Isso cria as colunas necessárias.

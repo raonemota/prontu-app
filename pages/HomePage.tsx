@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Appointment, Patient, AppointmentStatus, User, Page } from '../types';
 import AppointmentCard from '../components/AppointmentCard';
@@ -28,6 +27,7 @@ interface HomePageProps {
   toggleTheme: () => void;
   ensureAppointmentsForDate: (date: Date) => Promise<void>;
   setActivePage?: (page: Page) => void;
+  recoveryMode?: boolean;
 }
 
 const LANDING_URL = "https://www.prontu.ia.br";
@@ -234,11 +234,18 @@ const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date)
 };
 
 
-const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme, ensureAppointmentsForDate, setActivePage }) => {
+const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment, addAppointment, user, updateUser, theme, toggleTheme, ensureAppointmentsForDate, setActivePage, recoveryMode }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Efeito para abrir o modal de perfil se estiver em modo de recuperação
+  useEffect(() => {
+    if (recoveryMode) {
+        setIsProfileModalOpen(true);
+    }
+  }, [recoveryMode]);
 
   // Lógica de Trial/Premium
   const { isTrial, daysLeft, isExpired, isPremiumOrBeta } = useMemo(() => {
@@ -485,6 +492,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
             theme={theme}
             toggleTheme={toggleTheme}
             navigateTo={setActivePage}
+            isRecoveryMode={recoveryMode}
         />
       )}
 
