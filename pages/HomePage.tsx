@@ -236,7 +236,13 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  const selectedDateString = selectedDate.toISOString().split('T')[0];
+  // FIX: Build date string locally (YYYY-MM-DD) to avoid UTC timezone shifts
+  const selectedDateString = useMemo(() => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, [selectedDate]);
 
   useEffect(() => {
     ensureAppointmentsForDate(selectedDate);

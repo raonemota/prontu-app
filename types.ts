@@ -67,6 +67,7 @@ export interface Patient {
   profile_pic: string;
   clinic_id: number | null;
   clinics: { name: string } | null; // From Supabase join
+  phone?: string; // Added phone number
 }
 
 export interface Appointment {

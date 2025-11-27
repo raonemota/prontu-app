@@ -36,6 +36,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
     session_value: '',
     // appointment_time removido do estado direto, gerenciado via specificTimes
     clinic_id: null as number | null,
+    phone: '',
   });
   const [appointment_days, setAppointmentDays] = useState<number[]>([]);
   // Estado para armazenar horários específicos por dia: chave é o índice do dia (0-6)
@@ -51,6 +52,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
         category: patientToEdit.category || Category.Adult,
         session_value: String(patientToEdit.session_value || ''),
         clinic_id: patientToEdit.clinic_id || null,
+        phone: patientToEdit.phone || '',
       });
       
       const days = Array.isArray(patientToEdit.appointment_days) ? patientToEdit.appointment_days : [];
@@ -62,7 +64,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
       // Se já existir appointment_times no banco, usa ele
       if (patientToEdit.appointment_times) {
           Object.entries(patientToEdit.appointment_times).forEach(([dayStr, time]) => {
-              times[parseInt(dayStr)] = time;
+              times[parseInt(dayStr)] = time as string;
           });
       }
       
@@ -84,6 +86,7 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
         category: Category.Adult,
         session_value: '',
         clinic_id: null,
+        phone: '',
       });
       setAppointmentDays([]);
       setSpecificTimes({});
@@ -122,6 +125,20 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleChangePhone = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let v = e.target.value.replace(/\D/g, "");
+    if (v.length > 11) v = v.slice(0, 11);
+    
+    if (v.length > 10) {
+      v = v.replace(/^(\d\d)(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (v.length > 5) {
+      v = v.replace(/^(\d\d)(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (v.length > 2) {
+      v = v.replace(/^(\d\d)(\d{0,5})/, "($1) $2");
+    }
+    setFormData(prev => ({ ...prev, phone: v }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -235,6 +252,12 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
                     ))}
                 </select>
             </div>
+            
+            <div>
+                <label className={labelStyles}>Telefone (WhatsApp)</label>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChangePhone} className={inputStyles} placeholder="(DD) 9XXXX-XXXX" />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={labelStyles}>Sexo</label>
@@ -303,25 +326,23 @@ const AddPatientModal: React.FC<AddPatientModalProps> = ({ isOpen, onClose, addP
               )}
             </div>
 
-            <div className="pt-4 flex justify-between items-center">
-              <div>
-                {patientToEdit && (
-                  <button
-                    type="button"
-                    onClick={handleDeactivateClick}
-                    className="px-4 py-2 bg-red-100 text-danger rounded-lg font-medium flex items-center space-x-2 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/80 transition-colors"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                    <span>Desativar</span>
-                  </button>
-                )}
-              </div>
-              <div className="flex space-x-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium flex items-center space-x-2">
+            <div className="pt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              {patientToEdit && (
+                <button
+                  type="button"
+                  onClick={handleDeactivateClick}
+                  className="w-full sm:w-auto px-4 py-2 bg-red-100 text-danger rounded-lg font-medium flex items-center justify-center space-x-2 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-900/80 transition-colors order-2 sm:order-1"
+                >
+                  <TrashIcon className="w-5 h-5" />
+                  <span>Desativar</span>
+                </button>
+              )}
+              <div className="flex space-x-3 w-full sm:w-auto order-1 sm:order-2">
+                <button type="button" onClick={onClose} className="flex-1 sm:flex-none justify-center px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium flex items-center space-x-2">
                   <CloseIcon className="w-5 h-5" />
                   <span>Cancelar</span>
                 </button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center space-x-2">
+                <button type="submit" className="flex-1 sm:flex-none justify-center px-4 py-2 bg-primary text-white rounded-lg font-medium flex items-center space-x-2">
                   <CheckIcon className="w-5 h-5" />
                   <span>{patientToEdit ? 'Salvar' : 'Adicionar'}</span>
                 </button>

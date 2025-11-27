@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { Appointment, Patient, AppointmentStatus } from '../types';
 import { ClockIcon } from './icons/ClockIcon';
 import { ClinicIcon } from './icons/ClinicIcon';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -32,6 +34,10 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
   
   // Format time to HH:MM (remove seconds if present)
   const formattedTime = appointment.time ? appointment.time.slice(0, 5) : '';
+  
+  // WhatsApp Logic
+  const cleanPhone = patient.phone ? patient.phone.replace(/[^\d]/g, '') : '';
+  const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}` : null;
 
   return (
     <div 
@@ -61,7 +67,19 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
             )}
         </div>
       </div>
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 flex items-center space-x-2">
+        {whatsappUrl && (
+            <a 
+                href={whatsappUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()} // Impede abrir o modal de edição ao clicar no whats
+                className="p-1.5 text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-full hover:bg-green-200 transition-colors" 
+                aria-label="WhatsApp"
+            >
+                <WhatsAppIcon className="w-4 h-4" />
+            </a>
+        )}
         <select
           value={currentStatus}
           onChange={(e) => onStatusChange(e.target.value as AppointmentStatus)}

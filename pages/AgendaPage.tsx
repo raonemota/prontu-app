@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Appointment, Patient, AppointmentStatus, Page } from '../types';
 import SubPageHeader from '../components/SubPageHeader';
 import { CalendarDaysIcon } from '../components/icons/CalendarDaysIcon';
@@ -7,6 +7,7 @@ import { ChevronDoubleLeftIcon } from '../components/icons/ChevronDoubleLeftIcon
 import { ChevronDoubleRightIcon } from '../components/icons/ChevronDoubleRightIcon';
 import { ClinicIcon } from '../components/icons/ClinicIcon';
 import { ClockIcon } from '../components/icons/ClockIcon';
+import { WhatsAppIcon } from '../components/icons/WhatsAppIcon';
 
 interface AgendaPageProps {
   patients: Patient[];
@@ -15,24 +16,34 @@ interface AgendaPageProps {
   setActivePage: (page: Page) => void;
 }
 
-const statusColors: Record<AppointmentStatus, string> = {
-  [AppointmentStatus.NoStatus]: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-  [AppointmentStatus.Completed]: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  [AppointmentStatus.NoShow]: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-  [AppointmentStatus.Canceled]: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+// Colors for the status dots
+const statusDotColors: Record<AppointmentStatus, string> = {
+  [AppointmentStatus.NoStatus]: 'bg-gray-300 dark:bg-gray-600',
+  [AppointmentStatus.Completed]: 'bg-green-500',
+  [AppointmentStatus.NoShow]: 'bg-red-500', 
+  [AppointmentStatus.Canceled]: 'bg-red-500',
+};
+
+// Helper to get local date string YYYY-MM-DD to fix timezone issues
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointments, setActivePage }) => {
   // Inicializa com o domingo da semana atual
+  // FIX: Define hora para 12:00 (Meio-dia) para evitar problemas de fuso horário/DST na virada do dia (00:00 -> 23:00)
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
+    d.setHours(12, 0, 0, 0); 
     const day = d.getDay(); // 0 (Domingo) - 6 (Sábado)
     d.setDate(d.getDate() - day);
     return d;
   });
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
   const todayRef = useRef<HTMLDivElement>(null);
 
   // Scroll para o dia atual quando a página monta
@@ -40,7 +51,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     // Pequeno timeout para garantir que o render ocorreu
     const timer = setTimeout(() => {
         if (todayRef.current) {
-            todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
     }, 300);
     return () => clearTimeout(timer);
@@ -48,6 +59,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
 
   const changeWeek = (weeks: number) => {
     const newStart = new Date(weekStart);
+    // Mantém o horário 12:00 ao somar dias, evitando shifts de timezone
     newStart.setDate(weekStart.getDate() + (weeks * 7));
     setWeekStart(newStart);
   };
@@ -74,7 +86,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
 
   // Lógica para montar os slots do dia
   const getSlotsForDay = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
     const dayOfWeek = date.getDay();
     const slots: { time: string; patient: Patient; appointment?: Appointment; type: 'recurring' | 'confirmed' | 'extra' }[] = [];
     const processedPatientIds = new Set<number>();
@@ -154,7 +166,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
               <button 
                 onClick={() => setWeekStart(() => {
                     const d = new Date();
-                    d.setHours(0,0,0,0);
+                    d.setHours(12,0,0,0);
                     d.setDate(d.getDate() - d.getDay());
                     return d;
                 })}
@@ -169,9 +181,19 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
           </button>
       </div>
 
-      <div className="space-y-6">
+      {/* Days Container - Horizontal Scroll */}
+      <div className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory px-2 scrollbar-hide">
+          <style>{`
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+          `}</style>
           {weekDays.map(day => {
-              const dateStr = day.toISOString().split('T')[0];
+              const dateStr = getLocalDateString(day);
               const isToday = dateStr === todayStr;
               const slots = getSlotsForDay(day);
               const groupedSlots = groupSlotsByTime(slots);
@@ -181,23 +203,23 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
                   <div 
                     key={dateStr} 
                     ref={isToday ? todayRef : null}
-                    className={`rounded-xl overflow-hidden transition-all ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-gray-100 dark:ring-offset-dark-bg' : ''}`}
+                    className={`min-w-[85vw] md:min-w-[350px] snap-center rounded-xl overflow-hidden transition-all flex flex-col h-full bg-white dark:bg-dark-card shadow-sm border border-gray-100 dark:border-dark-border ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-gray-100 dark:ring-offset-dark-bg' : ''}`}
                   >
                       {/* Cabeçalho do Dia */}
-                      <div className={`px-4 py-2 flex items-center justify-between ${isToday ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-dark-border text-gray-700 dark:text-dark-text'}`}>
+                      <div className={`px-4 py-3 flex items-center justify-between ${isToday ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-dark-border text-gray-700 dark:text-dark-text'}`}>
                           <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold">{day.getDate()}</span>
+                              <span className="text-xl font-bold">{day.getDate()}</span>
                               <span className="text-sm font-medium uppercase opacity-90">
                                 {day.toLocaleDateString('pt-BR', { weekday: 'long' })}
                               </span>
                           </div>
-                          {isToday && <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">HOJE</span>}
+                          {isToday && <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">HOJE</span>}
                       </div>
 
                       {/* Corpo do Dia */}
-                      <div className="bg-white dark:bg-dark-card p-3 min-h-[80px]">
+                      <div className="p-3 flex-1 overflow-y-auto max-h-[60vh]">
                           {sortedTimes.length > 0 ? (
-                              <div className="space-y-3">
+                              <div className="space-y-2">
                                   {sortedTimes.map(time => {
                                       const timeSlots = groupedSlots[time];
                                       const isCollision = timeSlots.length > 1;
@@ -205,63 +227,69 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
                                       return (
                                           <div key={time} className="flex">
                                               {/* Coluna Horário */}
-                                              <div className="w-14 pt-3 flex-shrink-0">
-                                                  <span className="text-sm font-bold text-gray-500 dark:text-dark-subtext">{time.slice(0, 5)}</span>
+                                              <div className="w-12 pt-2.5 flex-shrink-0">
+                                                  <span className="text-xs font-bold text-gray-500 dark:text-dark-subtext">{time.slice(0, 5)}</span>
                                               </div>
                                               
                                               {/* Coluna Cards */}
-                                              <div className={`flex-1 space-y-2 ${isCollision ? 'p-2 border-l-4 border-primary/40 bg-gray-50 dark:bg-dark-bg/50 rounded-r-lg' : ''}`}>
-                                                  {timeSlots.map((slot, idx) => (
+                                              <div className={`flex-1 space-y-1.5 ${isCollision ? 'p-1.5 border-l-2 border-primary/40 bg-gray-50 dark:bg-dark-bg/50 rounded-r-lg' : ''}`}>
+                                                  {timeSlots.map((slot, idx) => {
+                                                      const cleanPhone = slot.patient.phone ? slot.patient.phone.replace(/[^\d]/g, '') : '';
+                                                      const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}` : null;
+                                                      
+                                                      // Determine status color dot
+                                                      let dotColor = 'bg-gray-300 dark:bg-gray-600'; // Default recurring/no status
+                                                      if (slot.type === 'confirmed' && slot.appointment) {
+                                                          const status = slot.appointment.status || AppointmentStatus.NoStatus;
+                                                          dotColor = statusDotColors[status] || dotColor;
+                                                      }
+
+                                                      return (
                                                       <div 
                                                         key={idx}
-                                                        className={`p-3 rounded-lg border flex items-center gap-3 transition-colors ${
+                                                        className={`p-2 rounded-lg border flex items-center gap-2 transition-colors ${
                                                             slot.type === 'recurring' 
-                                                                ? 'bg-white border-dashed border-gray-300 dark:bg-dark-card dark:border-dark-border opacity-80' 
+                                                                ? 'bg-white border-dashed border-gray-300 dark:bg-dark-card dark:border-dark-border opacity-70' 
                                                                 : 'bg-white border-gray-100 dark:bg-dark-card dark:border-dark-border shadow-sm'
                                                         }`}
                                                       >
-                                                          <img 
-                                                            src={slot.patient.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png'} 
-                                                            alt="" 
-                                                            className="w-10 h-10 rounded-full object-cover"
-                                                          />
+                                                          {/* Status Dot - Colored Circle */}
+                                                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} title={slot.type === 'recurring' ? 'Recorrente' : slot.appointment?.status} />
                                                           
                                                           <div className="flex-1 min-w-0">
-                                                              <p className="font-semibold text-sm text-dark dark:text-dark-text truncate">
+                                                              <p className="font-semibold text-sm text-dark dark:text-dark-text truncate leading-tight">
                                                                   {slot.patient.name}
                                                               </p>
-                                                              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-subtext">
-                                                                  {slot.patient.clinics?.name && (
-                                                                      <span className="flex items-center gap-1 truncate">
-                                                                          <ClinicIcon className="w-3 h-3" />
-                                                                          {slot.patient.clinics.name}
-                                                                      </span>
-                                                                  )}
-                                                              </div>
-                                                          </div>
-
-                                                          <div className="flex flex-col items-end gap-1">
-                                                              {slot.type === 'confirmed' && slot.appointment ? (
-                                                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[slot.appointment.status || AppointmentStatus.NoStatus]}`}>
-                                                                      {slot.appointment.status || 'Agendado'}
-                                                                  </span>
-                                                              ) : (
-                                                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                                                                      Recorrente
-                                                                  </span>
+                                                              {slot.patient.clinics?.name && (
+                                                                  <p className="text-[10px] text-gray-400 dark:text-dark-subtext flex items-center gap-1 mt-0.5 truncate">
+                                                                      <ClinicIcon className="w-2.5 h-2.5" />
+                                                                      {slot.patient.clinics.name}
+                                                                  </p>
                                                               )}
                                                           </div>
+
+                                                          {whatsappUrl && (
+                                                            <a 
+                                                                href={whatsappUrl} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                className="p-1.5 text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded-full hover:bg-green-100 transition-colors flex-shrink-0" 
+                                                                aria-label="WhatsApp"
+                                                            >
+                                                                <WhatsAppIcon className="w-3.5 h-3.5" />
+                                                            </a>
+                                                          )}
                                                       </div>
-                                                  ))}
+                                                  )})}
                                               </div>
                                           </div>
                                       );
                                   })}
                               </div>
                           ) : (
-                              <div className="flex flex-col items-center justify-center py-6 text-gray-400 dark:text-gray-600">
-                                  <ClockIcon className="w-8 h-8 mb-2 opacity-50" />
-                                  <p className="text-sm">Nenhum agendamento</p>
+                              <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-600">
+                                  <ClockIcon className="w-8 h-8 mb-2 opacity-30" />
+                                  <p className="text-xs">Livre</p>
                               </div>
                           )}
                       </div>

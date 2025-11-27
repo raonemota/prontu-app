@@ -2,6 +2,7 @@
 import React from 'react';
 import { Patient } from '../types';
 import { PencilIcon } from './icons/PencilIcon';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 
 interface PatientListItemProps {
   patient: Patient;
@@ -38,6 +39,9 @@ const PatientListItem: React.FC<PatientListItemProps> = ({ patient, onEdit }) =>
 
       return dayName;
   };
+  
+  const cleanPhone = patient.phone ? patient.phone.replace(/[^\d]/g, '') : '';
+  const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}` : null;
 
   return (
     <div className="bg-white dark:bg-dark-card p-3 rounded-xl shadow-sm flex items-start space-x-3 border border-gray-100 dark:border-dark-border">
@@ -70,13 +74,26 @@ const PatientListItem: React.FC<PatientListItemProps> = ({ patient, onEdit }) =>
         <p className="font-bold text-sm text-primary">
           {(patient.session_value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         </p>
-        <button
-          onClick={onEdit}
-          className="p-1.5 text-secondary bg-secondary/10 dark:bg-secondary/20 dark:text-teal-300 rounded-full hover:bg-secondary/20 transition-colors"
-          aria-label="Editar Paciente"
-        >
-          <PencilIcon className="w-4 h-4" />
-        </button>
+        <div className="flex items-center space-x-2">
+            {whatsappUrl && (
+                <a 
+                    href={whatsappUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-1.5 text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-full hover:bg-green-200 transition-colors" 
+                    aria-label="WhatsApp"
+                >
+                    <WhatsAppIcon className="w-4 h-4" />
+                </a>
+            )}
+            <button
+            onClick={onEdit}
+            className="p-1.5 text-secondary bg-secondary/10 dark:bg-secondary/20 dark:text-teal-300 rounded-full hover:bg-secondary/20 transition-colors"
+            aria-label="Editar Paciente"
+            >
+            <PencilIcon className="w-4 h-4" />
+            </button>
+        </div>
       </div>
     </div>
   );

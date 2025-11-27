@@ -7,7 +7,9 @@ import { DocumentArrowDownIcon } from '../components/icons/DocumentArrowDownIcon
 import { EyeIcon } from '../components/icons/EyeIcon';
 import { EyeSlashIcon } from '../components/icons/EyeSlashIcon';
 import { ChartIcon } from '../components/icons/ChartIcon';
+import { ChartBarSquareIcon } from '../components/icons/ChartBarSquareIcon';
 import PremiumAlertModal from '../components/PremiumAlertModal';
+import ReportsChartModal from '../components/ReportsChartModal';
 
 declare const jspdf: any;
 
@@ -38,6 +40,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
   // Estados para o Modal Premium
   const [isPremiumAlertOpen, setIsPremiumAlertOpen] = useState(false);
   const [premiumAlertInfo, setPremiumAlertInfo] = useState({ title: '', message: '' });
+
+  // Estado para o Gráfico
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false);
 
   // Infinite Scroll State
   const [displayCount, setDisplayCount] = useState(10);
@@ -168,6 +173,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       }
       setExportFormat('pdf'); // Reset format to PDF
       setIsExportModalOpen(true);
+  };
+  
+  const handleOpenChartModal = () => {
+      // Lógica de Controle de Acesso (mesma da exportação para consistência, ou liberar para todos)
+      // Vamos liberar para todos por enquanto como um "teaser" ou funcionalidade básica
+      setIsChartModalOpen(true);
   };
 
   // Slice data for display
@@ -362,13 +373,21 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         icon={<ChartIcon className="w-6 h-6" />}
       >
         <button 
+            onClick={handleOpenChartModal}
+            className="p-2 bg-primary/10 text-primary dark:bg-primary/20 dark:text-purple-300 rounded-full hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
+            aria-label="Ver Gráfico"
+            title="Ver Gráfico Mensal"
+        >
+            <ChartBarSquareIcon className="w-6 h-6" />
+        </button>
+        <button 
             onClick={() => setShowValues(!showValues)} 
             className="p-2 bg-gray-100 dark:bg-dark-border text-gray-600 dark:text-dark-subtext rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
             aria-label={showValues ? "Ocultar valores" : "Mostrar valores"}
         >
             {showValues ? <EyeIcon className="w-6 h-6" /> : <EyeSlashIcon className="w-6 h-6" />}
         </button>
-        <button onClick={handleOpenExportModal} className="p-2 bg-secondary/10 text-secondary rounded-full" aria-label="Exportar Relatório">
+        <button onClick={handleOpenExportModal} className="p-2 bg-secondary/10 text-secondary rounded-full hover:bg-secondary/20 transition-colors" aria-label="Exportar Relatório">
             <DocumentArrowDownIcon className="w-6 h-6" />
         </button>
       </SubPageHeader>
@@ -546,6 +565,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                 </div>
             </div>
         </div>
+    )}
+
+    {isChartModalOpen && (
+        <ReportsChartModal 
+            isOpen={isChartModalOpen} 
+            onClose={() => setIsChartModalOpen(false)} 
+            appointments={appointments}
+            allPatients={allPatients}
+        />
     )}
 
     <PremiumAlertModal 
