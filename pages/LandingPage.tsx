@@ -286,9 +286,131 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
             </div>
         </div>
       </header>
+      
+      {/* App Gallery Section - UI Mockups */}
+      <section className="py-20 bg-gray-50 dark:bg-dark-bg/50 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+              <div className="text-center mb-16">
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4 text-dark dark:text-white">Por dentro do Prontu</h2>
+                  <p className="text-lg text-gray-500 dark:text-dark-subtext max-w-2xl mx-auto">
+                      Uma interface limpa, moderna e pensada para agilizar o seu dia a dia.
+                  </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Gallery Card 1: Finance */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-gray-100 dark:border-dark-border p-5 hover:-translate-y-1 transition-transform duration-300 group">
+                      <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center">
+                              <ChartIcon className="w-6 h-6" />
+                          </div>
+                          <div>
+                              <p className="text-sm font-bold text-dark dark:text-white">Relatórios</p>
+                              <p className="text-xs text-gray-500">Financeiro Completo</p>
+                          </div>
+                      </div>
+                      {/* CSS Mockup: Chart */}
+                      <div className="bg-gray-50 dark:bg-dark-bg rounded-xl p-3 h-32 flex items-end justify-between gap-1.5 relative overflow-hidden">
+                           {/* Dotted Lines */}
+                           <div className="absolute inset-0 flex flex-col justify-between p-3 opacity-10">
+                               <div className="w-full h-px bg-gray-800 dashed"></div>
+                               <div className="w-full h-px bg-gray-800 dashed"></div>
+                               <div className="w-full h-px bg-gray-800 dashed"></div>
+                           </div>
+                           <div className="w-full bg-primary/20 h-[30%] rounded-t-sm group-hover:h-[40%] transition-all duration-500"></div>
+                           <div className="w-full bg-primary/40 h-[50%] rounded-t-sm group-hover:h-[60%] transition-all duration-500"></div>
+                           <div className="w-full bg-primary/30 h-[45%] rounded-t-sm group-hover:h-[55%] transition-all duration-500"></div>
+                           <div className="w-full bg-secondary h-[75%] rounded-t-sm shadow-lg group-hover:h-[85%] transition-all duration-500"></div>
+                           <div className="w-full bg-primary/20 h-[60%] rounded-t-sm group-hover:h-[65%] transition-all duration-500"></div>
+                      </div>
+                  </div>
+
+                  {/* Gallery Card 2: Patients List */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-gray-100 dark:border-dark-border p-5 hover:-translate-y-1 transition-transform duration-300">
+                      <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
+                              <UsersIcon className="w-6 h-6" />
+                          </div>
+                          <div>
+                              <p className="text-sm font-bold text-dark dark:text-white">Pacientes</p>
+                              <p className="text-xs text-gray-500">Organização Total</p>
+                          </div>
+                      </div>
+                      {/* CSS Mockup: List */}
+                      <div className="space-y-2.5">
+                          {[1, 2, 3].map(i => (
+                              <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-dark-bg rounded-lg">
+                                  <div className={`w-8 h-8 rounded-full ${i===1 ? 'bg-blue-200' : i===2 ? 'bg-purple-200' : 'bg-green-200'} opacity-80`}></div>
+                                  <div className="flex-1 space-y-1.5">
+                                      <div className="h-2 w-16 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+                                      <div className="h-1.5 w-10 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                                  </div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+
+                  {/* Gallery Card 3: Dark Mode */}
+                  <div className="bg-gray-900 rounded-2xl shadow-lg border border-gray-800 p-5 hover:-translate-y-1 transition-transform duration-300 group">
+                      <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-lg bg-gray-800 text-white flex items-center justify-center">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                          </div>
+                          <div>
+                              <p className="text-sm font-bold text-white">Modo Escuro</p>
+                              <p className="text-xs text-gray-400">Conforto Visual</p>
+                          </div>
+                      </div>
+                      {/* CSS Mockup: Dark UI */}
+                      <div className="space-y-3">
+                         <div className="flex justify-between items-center bg-gray-800 p-2 rounded-lg">
+                             <div className="h-2 w-12 bg-gray-600 rounded-full"></div>
+                             <div className="h-4 w-8 bg-primary rounded-full"></div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                             <div className="w-full h-8 bg-gray-800 rounded-lg flex items-center px-2 gap-2">
+                                 <div className="w-3 h-3 border border-gray-600 rounded-full"></div>
+                                 <div className="h-1 w-full bg-gray-700 rounded-full"></div>
+                             </div>
+                         </div>
+                         <div className="grid grid-cols-2 gap-2">
+                             <div className="h-10 bg-gray-800 rounded-lg"></div>
+                             <div className="h-10 bg-gray-800 rounded-lg"></div>
+                         </div>
+                      </div>
+                  </div>
+                  
+                  {/* Gallery Card 4: Agenda / Calendar */}
+                  <div className="bg-white dark:bg-dark-card rounded-2xl shadow-lg border border-gray-100 dark:border-dark-border p-5 hover:-translate-y-1 transition-transform duration-300">
+                      <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
+                              <ClockIcon className="w-6 h-6" />
+                          </div>
+                          <div>
+                              <p className="text-sm font-bold text-dark dark:text-white">Agenda</p>
+                              <p className="text-xs text-gray-500">Visão Semanal</p>
+                          </div>
+                      </div>
+                      {/* CSS Mockup: Calendar */}
+                      <div className="flex gap-1.5 h-32 items-end">
+                           {[1,2,3,4,5].map(i => (
+                               <div key={i} className="flex-1 flex flex-col gap-1 h-full justify-end">
+                                   <div className={`w-full rounded-md ${i===2 ? 'h-[60%] bg-primary' : i===4 ? 'h-[40%] bg-secondary' : 'h-[20%] bg-gray-100 dark:bg-gray-700'}`}></div>
+                                   <div className="text-[8px] text-center text-gray-400 font-bold">
+                                       {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'][i-1]}
+                                   </div>
+                               </div>
+                           ))}
+                      </div>
+                  </div>
+
+              </div>
+          </div>
+      </section>
 
       {/* Benefits Section */}
-      <section className="px-6 py-20 bg-gray-50 dark:bg-dark-card/50">
+      <section className="px-6 py-20 bg-white dark:bg-dark-card/50">
         <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-dark dark:text-dark-text">
                 Por que profissionais de saúde <br className="hidden md:block" /> escolhem o <span className="text-primary">Prontu Premium</span>?
@@ -332,7 +454,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
       </section>
 
       {/* Testimonials Section */}
-      <section className="px-6 py-24 bg-white dark:bg-dark-bg relative overflow-hidden">
+      <section className="px-6 py-24 bg-gray-50 dark:bg-dark-bg relative overflow-hidden">
         {/* Decorative circle */}
         <div className="absolute top-1/2 right-0 transform translate-x-1/3 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10"></div>
         
@@ -416,7 +538,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="px-6 py-24 bg-gray-50 dark:bg-dark-bg/50 relative">
+      <section id="pricing" className="px-6 py-24 bg-white dark:bg-dark-bg/50 relative">
         <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-5xl font-bold mb-6 text-dark dark:text-text">Investimento que se paga</h2>
