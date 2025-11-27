@@ -49,32 +49,49 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
 
   const handleOpenAddModal = () => {
     // Lógica de Controle de Acesso
-    const plan = user.tipo_assinante || 'Free';
-    const isFree = plan === 'Free';
-    const isPremium = plan === 'Premium';
+    const plan = (user.tipo_assinante || user.plan || 'Free').toLowerCase();
+    const isPremiumOrBeta = plan === 'premium' || plan === 'beta';
+    
+    // Verificar Trial
+    let isTrialActive = false;
+    if (user.data_expiracao_acesso) {
+        const expirationDate = new Date(user.data_expiracao_acesso);
+        const today = new Date();
+        // A comparação today <= expirationDate garante que o dia da expiração ainda conta
+        if (today <= expirationDate) {
+            isTrialActive = true;
+        }
+    }
 
-    // Regra 1: Usuários Free só podem ter até 5 pacientes ativos
-    if (isFree && patients.length >= 5) {
+    const hasPremiumAccess = isPremiumOrBeta || isTrialActive;
+
+    // Regra 1: Usuários Free (sem trial ativo ou expirado) só podem ter até 5 pacientes ativos
+    if (!hasPremiumAccess && patients.length >= 5) {
         setPremiumAlertInfo({
             title: "Limite do Plano Free",
-            message: "Você atingiu o limite de 5 pacientes do plano gratuito. Faça um upgrade para o plano Premium para cadastrar pacientes ilimitados."
+            message: "Você atingiu o limite de 5 pacientes. Seu período de teste expirou ou você está no plano gratuito. Faça um upgrade para continuar."
         });
         setIsPremiumAlertOpen(true);
         return;
     }
 
-    // Regra 2: Usuários Premium devem estar com a assinatura em dia
-    if (isPremium && user.data_expiracao_acesso) {
-        const expirationDate = new Date(user.data_expiracao_acesso);
-        const today = new Date();
-        if (today > expirationDate) {
+    // Regra 2: Usuários Premium (ou em trial) devem estar com a assinatura/prazo em dia
+    // Se hasPremiumAccess é true, significa que ou é Premium ou é Trial válido.
+    // Mas se o usuário for Premium (ex: status cancelado/past_due) e a data passou, hasPremiumAccess seria falso se baseasse apenas em data?
+    // Não, isPremiumOrBeta é baseado no texto.
+    // Então precisamos checar a validade se o usuário FOR Premium também.
+    
+    if (isPremiumOrBeta && user.data_expiracao_acesso) {
+         const expirationDate = new Date(user.data_expiracao_acesso);
+         const today = new Date();
+         if (today > expirationDate) {
             setPremiumAlertInfo({
                 title: "Assinatura Expirada",
                 message: "Sua assinatura Premium expirou. Por favor, renove seu plano para continuar adicionando novos pacientes."
             });
             setIsPremiumAlertOpen(true);
             return;
-        }
+         }
     }
 
     setPatientToEdit(null);
@@ -210,6 +227,7 @@ const PatientsPage: React.FC<PatientsPageProps> = ({ patients, addPatient, updat
         onClose={() => setIsPremiumAlertOpen(false)}
         title={premiumAlertInfo.title}
         message={premiumAlertInfo.message}
+        navigateTo={setActivePage}
       />
     </div>
   );

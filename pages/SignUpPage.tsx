@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Page } from '../types';
@@ -20,13 +21,23 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
     setError(null);
     setMessage(null);
 
+    // Calcular data de expiração (Hoje + 7 dias)
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 7);
+    
+    // URL da imagem de perfil padrão
+    const defaultProfilePic = 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png';
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
-          profile_pic: 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png'
+          profile_pic: defaultProfilePic,
+          tipo_assinante: 'Free', // Padrão Free
+          status_assinatura: 'trialing', // Status de teste
+          data_expiracao_acesso: expirationDate.toISOString() // Válido por 7 dias
         }
       }
     });
@@ -36,7 +47,18 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
     } else if (data.user && data.user.identities && data.user.identities.length === 0) {
       setError("Usuário com este e-mail já existe.");
     } else {
-      setMessage("Cadastro realizado! Verifique seu e-mail para confirmação.");
+      // Se houver sessão (email confirmation desligado), atualiza explicitamente a tabela users
+      if (data.session) {
+          await supabase.from('users').update({
+              full_name: fullName,
+              profile_pic: defaultProfilePic,
+              tipo_assinante: 'Free',
+              status_assinatura: 'trialing',
+              data_expiracao_acesso: expirationDate.toISOString()
+          }).eq('id', data.user.id);
+      }
+
+      setMessage("Cadastro realizado! Aproveite 7 dias de acesso Premium grátis. Verifique seu e-mail para confirmação.");
     }
     setLoading(false);
   };
@@ -49,7 +71,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
       <div className="text-center">
           <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
           <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
-          <p className="text-gray-500 dark:text-dark-subtext">É rápido e fácil.</p>
+          <p className="text-gray-500 dark:text-dark-subtext">Ganhe 7 dias de Premium Grátis.</p>
       </div>
       
       {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}

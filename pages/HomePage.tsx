@@ -10,6 +10,8 @@ import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
 import { ChevronDoubleLeftIcon } from '../components/icons/ChevronDoubleLeftIcon';
 import { ChevronDoubleRightIcon } from '../components/icons/ChevronDoubleRightIcon';
 import FeatureAnnouncementModal from '../components/FeatureAnnouncementModal';
+import { StarIcon } from '../components/icons/StarIcon';
+import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
 
 // Add setActivePage to interface to allow navigation from profile modal
 interface HomePageProps {
@@ -27,6 +29,8 @@ interface HomePageProps {
   ensureAppointmentsForDate: (date: Date) => Promise<void>;
   setActivePage?: (page: Page) => void;
 }
+
+const LANDING_URL = "https://www.prontu.ia.br";
 
 const DayNavigator: React.FC<{ selectedDate: Date; setSelectedDate: (date: Date) => void }> = ({ selectedDate, setSelectedDate }) => {
     const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -236,6 +240,32 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  // Lógica de Trial/Premium
+  const { isTrial, daysLeft, isExpired, isPremiumOrBeta } = useMemo(() => {
+    const plan = (user.tipo_assinante || user.plan || 'Free').toLowerCase();
+    const isPremiumOrBeta = plan === 'premium' || plan === 'beta';
+    
+    let isTrial = false;
+    let daysLeft = 0;
+    let isExpired = false;
+
+    if (!isPremiumOrBeta && user.data_expiracao_acesso) {
+        const expiration = new Date(user.data_expiracao_acesso);
+        const now = new Date();
+        const diffTime = expiration.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) {
+            isTrial = true;
+            daysLeft = diffDays;
+        } else {
+            isExpired = true;
+        }
+    }
+
+    return { isTrial, daysLeft, isExpired, isPremiumOrBeta };
+  }, [user]);
+
   // FIX: Build date string locally (YYYY-MM-DD) to avoid UTC timezone shifts
   const selectedDateString = useMemo(() => {
     const year = selectedDate.getFullYear();
@@ -274,6 +304,14 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const handleSaveProfile = (updatedUser: Omit<User, 'id' | 'plan'>) => {
     updateUser(updatedUser);
   };
+
+  const handleUpgradeClick = () => {
+    if (window.location.hostname.includes('localhost') && setActivePage) {
+        setActivePage(Page.Landing);
+    } else {
+        window.location.href = `${LANDING_URL}#pricing`;
+    }
+  };
   
   const editingAppointmentPatient = useMemo(() => {
     if (!editingAppointment) return null;
@@ -282,6 +320,11 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   
   const userFirstName = (user.full_name || 'Usuário').split(' ')[0];
   const userProfilePic = user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
+
+  // Format expiration date for display
+  const formattedExpiration = user.data_expiracao_acesso 
+    ? new Date(user.data_expiracao_acesso).toLocaleDateString('pt-BR') 
+    : '';
 
   return (
     <div className="space-y-2">
@@ -308,6 +351,60 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
         
         <DayNavigator selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
       </div>
+
+      {/* Trial / Expired Banner */}
+      {!isPremiumOrBeta && (
+        <div className="mx-1 mt-2 mb-2">
+            {isTrial ? (
+                <div 
+                    onClick={handleUpgradeClick}
+                    className="bg-gradient-to-r from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 p-3 rounded-xl border border-yellow-300 dark:border-yellow-700 cursor-pointer shadow-sm hover:scale-[1.01] transition-transform"
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <StarIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                            <div>
+                                <p className="text-sm font-bold text-yellow-800 dark:text-yellow-200 leading-tight">Período de Teste Ativo</p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                                    Válido até <strong>{formattedExpiration}</strong>.
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-xs font-bold bg-yellow-400 text-yellow-900 px-2 py-1 rounded shadow-sm">Ver Planos</span>
+                    </div>
+                </div>
+            ) : isExpired ? (
+                <div 
+                    onClick={handleUpgradeClick}
+                    className="bg-white dark:bg-dark-card p-3 rounded-xl border border-red-200 dark:border-red-900 cursor-pointer shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                >
+                    <div className="absolute right-0 top-0 p-2 opacity-5">
+                        <ShieldCheckIcon className="w-16 h-16" />
+                    </div>
+                    <div className="flex items-center justify-between relative z-10">
+                         <div className="flex-1">
+                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Seu teste Premium expirou</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Faça o upgrade para remover os limites.</p>
+                         </div>
+                         <button className="bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-md animate-pulse">
+                            Virar Premium
+                         </button>
+                    </div>
+                </div>
+            ) : (
+                // Caso seja usuário Free antigo sem data de expiração (raro com o novo fluxo, mas possível)
+                 <div 
+                    onClick={handleUpgradeClick}
+                    className="bg-gradient-to-r from-primary/5 to-secondary/5 p-3 rounded-xl border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
+                >
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-primary">Tenha acesso ilimitado</p>
+                        <span className="text-xs font-bold text-secondary">Ver Premium &rarr;</span>
+                    </div>
+                </div>
+            )}
+        </div>
+      )}
       
       <div className="p-1">
         <div className="flex justify-between items-center mb-4">

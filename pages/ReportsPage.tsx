@@ -137,22 +137,33 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     // Quando abrir o modal, define a clínica de exportação padrão
   const handleOpenExportModal = () => {
       // Lógica de Controle de Acesso
-      const plan = user.tipo_assinante || 'Free';
-      const isFree = plan === 'Free';
-      const isPremium = plan === 'Premium';
+      const plan = (user.tipo_assinante || user.plan || 'Free').toLowerCase();
+      const isPremiumOrBeta = plan === 'premium' || plan === 'beta';
 
-      // Regra 1: Usuários Free não podem exportar relatórios
-      if (isFree) {
+      // Verificar Trial
+      let isTrialActive = false;
+      if (user.data_expiracao_acesso) {
+          const expirationDate = new Date(user.data_expiracao_acesso);
+          const today = new Date();
+          if (today <= expirationDate) {
+              isTrialActive = true;
+          }
+      }
+
+      const hasPremiumAccess = isPremiumOrBeta || isTrialActive;
+
+      // Regra 1: Usuários Free (sem trial ativo) não podem exportar relatórios
+      if (!hasPremiumAccess) {
           setPremiumAlertInfo({
               title: "Recurso Premium",
-              message: "A exportação de relatórios (PDF/Excel) é exclusiva para assinantes Premium ou Beta. Faça um upgrade para desbloquear esta funcionalidade."
+              message: "A exportação de relatórios é exclusiva para assinantes Premium ou Beta. Seu período de teste expirou ou você está no plano gratuito."
           });
           setIsPremiumAlertOpen(true);
           return;
       }
 
-      // Regra 2: Usuários Premium devem estar com a assinatura em dia
-      if (isPremium && user.data_expiracao_acesso) {
+      // Regra 2: Usuários Premium devem estar com a assinatura em dia (se tiver data)
+      if (isPremiumOrBeta && user.data_expiracao_acesso) {
           const expirationDate = new Date(user.data_expiracao_acesso);
           const today = new Date();
           if (today > expirationDate) {
@@ -581,6 +592,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         onClose={() => setIsPremiumAlertOpen(false)}
         title={premiumAlertInfo.title}
         message={premiumAlertInfo.message}
+        navigateTo={setActivePage}
     />
     </div>
   );
