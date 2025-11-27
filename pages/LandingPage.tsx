@@ -579,9 +579,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 {/* Monthly Plan */}
                 <div className="order-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
                     <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Mensal</h3>
-                    <div className="flex items-baseline mb-6">
-                        <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 9,90</span>
-                        <span className="text-gray-400 ml-2">/mês</span>
+                    <div className="flex flex-col mb-6">
+                        <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 14,90</span>
+                        <div className="flex items-baseline">
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 9,90</span>
+                            <span className="text-gray-400 ml-2 text-lg">/mês</span>
+                        </div>
+                        <div className="inline-block mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Preço de Lançamento</span>
+                        </div>
                     </div>
                     <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
                         Para quem quer flexibilidade total sem compromisso.
@@ -616,8 +622,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                         </div>
                     </div>
                     <h3 className="text-xl font-bold text-white/90 mb-2">Semestral</h3>
-                    <div className="flex items-baseline mb-1">
-                        <span className="text-5xl font-extrabold">R$ 49,90</span>
+                    <div className="flex flex-col mb-1">
+                        <span className="text-sm font-medium text-white/60 line-through decoration-white/50">de R$ 79,90</span>
+                        <div className="flex items-baseline">
+                            <span className="text-5xl font-extrabold">R$ 49,90</span>
+                        </div>
+                         <div className="inline-block mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded">Preço de Lançamento</span>
+                        </div>
                     </div>
                     <p className="text-white/70 text-sm font-medium mb-6">cobrado a cada 6 meses</p>
                     
@@ -654,9 +666,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 {/* Annual Plan */}
                 <div className="order-4 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
                     <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Anual</h3>
-                    <div className="flex items-baseline mb-6">
-                        <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
-                        <span className="text-gray-400 ml-2">/ano</span>
+                    <div className="flex flex-col mb-6">
+                        <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 159,90</span>
+                        <div className="flex items-baseline">
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
+                            <span className="text-gray-400 ml-2 text-lg">/ano</span>
+                        </div>
+                         <div className="inline-block mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Preço de Lançamento</span>
+                        </div>
                     </div>
                     <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
                         Pague uma única vez e garanta um ano inteiro.
