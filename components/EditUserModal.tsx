@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
@@ -12,6 +13,7 @@ interface EditUserModalProps {
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, onSave }) => {
   const [formData, setFormData] = useState({
+    email: '',
     tipo_assinante: 'Free',
     ciclo_plano: 'Mensal',
     status_assinatura: 'active',
@@ -23,6 +25,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
   useEffect(() => {
     if (user) {
       setFormData({
+        email: user.email || '',
         tipo_assinante: user.tipo_assinante || 'Free',
         ciclo_plano: user.ciclo_plano || 'Mensal',
         status_assinatura: user.status_assinatura || 'active',
@@ -83,12 +86,25 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
               />
               <div>
                   <p className="font-semibold text-dark dark:text-dark-text">{user.full_name}</p>
-                  <p className="text-xs text-gray-500 dark:text-dark-subtext">{user.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-dark-subtext">ID: {user.id.slice(0, 8)}...</p>
               </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
+            <div>
+                <label className={labelStyles}>E-mail de Acesso</label>
+                <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    className={inputStyles} 
+                    required
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Alterar isso mudará o login do usuário.</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={labelStyles}>Tipo de Assinante</label>
