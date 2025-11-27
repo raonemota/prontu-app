@@ -4,12 +4,14 @@ import { Appointment, Patient, AppointmentStatus } from '../types';
 import { ClockIcon } from './icons/ClockIcon';
 import { ClinicIcon } from './icons/ClinicIcon';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
+import { ExclamationCircleIcon } from './icons/ExclamationCircleIcon';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   patient: Patient;
   onStatusChange: (status: AppointmentStatus) => void;
   onClick: () => void;
+  isOffSchedule?: boolean;
 }
 
 const statusColors: Record<AppointmentStatus, string> = {
@@ -22,7 +24,7 @@ const statusColors: Record<AppointmentStatus, string> = {
 // List of valid status values to prevent crashes from bad data
 const validStatuses = Object.values(AppointmentStatus);
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient, onStatusChange, onClick }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient, onStatusChange, onClick, isOffSchedule }) => {
   // Ensure status is always a valid value, defaulting to 'NoStatus'
   const currentStatus = (appointment.status && validStatuses.includes(appointment.status))
     ? appointment.status
@@ -49,8 +51,17 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
     >
       <img src={patientProfilePic} alt={patientName} className="w-8 h-8 rounded-full object-cover" />
       <div className="flex-grow min-w-0"> {/* min-w-0 helps text truncate correctly */}
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex items-center gap-1 mb-0.5">
             <p className="font-semibold text-sm text-dark dark:text-dark-text truncate">{patientName}</p>
+            {isOffSchedule && (
+              <div className="group relative">
+                <ExclamationCircleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                {/* Tooltip simples (opcional, mas bom para UX) */}
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50">
+                  Dia não habitual
+                </span>
+              </div>
+            )}
         </div>
         <div className="flex items-center flex-wrap text-xs text-gray-500 dark:text-dark-subtext gap-x-2 gap-y-1">
             {formattedTime && (

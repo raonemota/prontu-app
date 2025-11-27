@@ -326,6 +326,20 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
           <div className="space-y-3">
             {dailyAppointments.map(app => {
               const patient = allPatients.find(p => p.id === app.patient_id);
+              
+              // Verificar se o dia do agendamento faz parte dos dias habituais do paciente
+              let isOffSchedule = false;
+              if (patient && app.date) {
+                  // Usar meio-dia para garantir que o dia da semana seja calculado corretamente (evita problemas de fuso horário)
+                  const appDate = new Date(app.date + 'T12:00:00');
+                  const appDay = appDate.getDay();
+                  
+                  // Se o paciente tem dias configurados e o dia atual não está neles
+                  if (patient.appointment_days && Array.isArray(patient.appointment_days) && !patient.appointment_days.includes(appDay)) {
+                      isOffSchedule = true;
+                  }
+              }
+
               return patient ? (
                 <AppointmentCard 
                   key={app.id} 
@@ -333,6 +347,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
                   patient={patient}
                   onStatusChange={(status) => updateAppointmentStatus(app.id, status)}
                   onClick={() => setEditingAppointment(app)}
+                  isOffSchedule={isOffSchedule}
                 />
               ) : null;
             })}
