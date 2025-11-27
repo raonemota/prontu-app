@@ -25,6 +25,8 @@ const statusDotColors: Record<AppointmentStatus, string> = {
 };
 
 // Helper to get local date string YYYY-MM-DD to fix timezone issues
+// IMPORTANT: This uses the date object's local time components.
+// To use this safely, ensure 'date' is set to Noon (12:00) to avoid boundary shifts.
 const getLocalDateString = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -34,7 +36,7 @@ const getLocalDateString = (date: Date) => {
 
 const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointments, setActivePage }) => {
   // Inicializa com o domingo da semana atual
-  // FIX: Define hora para 12:00 (Meio-dia) para evitar problemas de fuso horário/DST na virada do dia (00:00 -> 23:00)
+  // FIX: Noon Strategy - Start week at 12:00:00.
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0); 
@@ -59,7 +61,8 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
 
   const changeWeek = (weeks: number) => {
     const newStart = new Date(weekStart);
-    // Mantém o horário 12:00 ao somar dias, evitando shifts de timezone
+    // Setting hours again just to be paranoid about consistency
+    newStart.setHours(12, 0, 0, 0); 
     newStart.setDate(weekStart.getDate() + (weeks * 7));
     setWeekStart(newStart);
   };
@@ -69,6 +72,8 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
+      // Ensure hours remain at Noon after math
+      d.setHours(12, 0, 0, 0); 
       days.push(d);
     }
     return days;
@@ -87,11 +92,12 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
   // Lógica para montar os slots do dia
   const getSlotsForDay = (date: Date) => {
     const dateStr = getLocalDateString(date);
-    const dayOfWeek = date.getDay();
+    const dayOfWeek = date.getDay(); // 0-6 based on local time
+    
     const slots: { time: string; patient: Patient; appointment?: Appointment; type: 'recurring' | 'confirmed' | 'extra' }[] = [];
     const processedPatientIds = new Set<number>();
 
-    // 1. Verificar agendamentos REAIS no banco para este dia
+    // 1. Verificar agendamentos REAIS no banco para este dia (Matches YYYY-MM-DD string)
     const apps = appointments.filter(a => a.date === dateStr);
     
     apps.forEach(app => {

@@ -359,7 +359,7 @@ const App: React.FC = () => {
         console.error("Erro ao atualizar paciente:", errorMessage);
         alert(`Erro ao atualizar paciente: ${errorMessage}`);
     } else if (data) {
-        setPatients(prev => prev.map(p => p.id === patientId ? data as Patient : p));
+      setPatients(prev => prev.map(p => p.id === patientId ? data as Patient : p));
     }
   };
 
@@ -411,13 +411,19 @@ const App: React.FC = () => {
   const ensureAppointmentsForDate = async (date: Date) => {
       if (!session) return;
       
-      // FIX: Build date string locally (YYYY-MM-DD) to avoid UTC timezone shifts
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      // FIX: Noon Strategy (Estratégia do Meio-Dia)
+      // Create a cloned date object set to 12:00:00 (Noon) local time.
+      // This prevents issues where 'date' might be 00:00:00 and a timezone/DST shift 
+      // pushes it to 23:00:00 of the previous day, causing the wrong string generation.
+      const safeDate = new Date(date);
+      safeDate.setHours(12, 0, 0, 0);
+
+      const year = safeDate.getFullYear();
+      const month = String(safeDate.getMonth() + 1).padStart(2, '0');
+      const day = String(safeDate.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
-      const dayOfWeek = date.getDay(); // 0 (Dom) a 6 (Sab)
+      const dayOfWeek = safeDate.getDay(); // 0 (Dom) a 6 (Sab)
 
       const newAppointments: Omit<Appointment, 'id'>[] = [];
 
@@ -429,7 +435,6 @@ const App: React.FC = () => {
         const exists = appointments.some(a => a.patient_id === patient.id && a.date === dateString);
         if (!exists) {
            // Verifica se existe um horário específico para este dia
-           // As chaves do JSONB/Objeto geralmente são strings no Supabase
            const specificTime = patient.appointment_times ? patient.appointment_times[dayOfWeek.toString()] : null;
            
            // Se existir horário específico usa ele, caso contrário usa o fallback appointment_time
