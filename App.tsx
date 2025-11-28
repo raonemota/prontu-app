@@ -14,6 +14,8 @@ import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 import AgendaPage from './pages/AgendaPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 // Configuração dos Domínios
 const APP_DOMAIN = 'app.prontu.ia.br';
@@ -590,7 +592,8 @@ const App: React.FC = () => {
   const renderPage = () => {
     // Se estiver no domínio da Landing Page, força a renderização dela
     // a menos que esteja em localhost (dev) e force a navegação
-    if (isLandingDomain) {
+    // FIX: Se o usuário clicou em Termos ou Privacidade na Landing Page, permitimos a navegação
+    if (isLandingDomain && activePage !== Page.Terms && activePage !== Page.Privacy) {
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
     
@@ -675,6 +678,10 @@ const App: React.FC = () => {
         />;
       case Page.Admin:
         return <AdminPage setActivePage={setActivePage} currentUser={userProfile!} />;
+      case Page.Terms:
+        return <TermsPage setActivePage={setActivePage} />;
+      case Page.Privacy:
+        return <PrivacyPage setActivePage={setActivePage} />;
       // Caso esteja no domínio do App mas tente acessar landing, redireciona para home ou login
       case Page.Landing:
          return session ? <HomePage 
@@ -747,7 +754,7 @@ const App: React.FC = () => {
                  </main>
               )}
               {/* Só mostra a BottomNav se NÃO for Landing Domain */}
-              {!isLandingDomain && session && (
+              {!isLandingDomain && session && activePage !== Page.Terms && activePage !== Page.Privacy && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}
               {!isLandingDomain && <InstallPrompt />}

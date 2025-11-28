@@ -720,9 +720,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                   <p>&copy; {new Date().getFullYear()} Prontu Gestão. Todos os direitos reservados.</p>
               </div>
               <div className="flex gap-6">
-                  <button className="hover:text-primary transition-colors">Termos de Uso</button>
-                  <button className="hover:text-primary transition-colors">Política de Privacidade</button>
-                  <button onClick={() => window.open('mailto:suporte@prontu.com')} className="hover:text-primary transition-colors">Suporte</button>
+                  <button onClick={() => setActivePage(Page.Terms)} className="hover:text-primary transition-colors">Termos de Uso</button>
+                  <button onClick={() => setActivePage(Page.Privacy)} className="hover:text-primary transition-colors">Política de Privacidade</button>
+                  <button onClick={() => window.open('mailto:raonemota@hotmail.com')} className="hover:text-primary transition-colors">Suporte</button>
               </div>
           </div>
       </footer>
