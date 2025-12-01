@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -6,6 +7,7 @@
     <meta name="theme-color" content="#7A3AFF" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <title>Prontu - Gestão de Atendimentos</title>
     
     <!-- Script crítico para capturar evento PWA antes do React -->
@@ -52,6 +54,27 @@
             fontFamily: {
               sans: ['Poppins', 'sans-serif'],
             },
+            animation: {
+              'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+              'float': 'float 6s ease-in-out infinite',
+              'float-delayed': 'float-delayed 5s ease-in-out 2s infinite',
+            },
+            keyframes: {
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              float: {
+                '0%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-20px)' },
+                '100%': { transform: 'translateY(0px)' },
+              },
+              'float-delayed': {
+                '0%': { transform: 'translateY(0px)' },
+                '50%': { transform: 'translateY(-15px)' },
+                '100%': { transform: 'translateY(0px)' },
+              }
+            }
           }
         }
       }
@@ -73,10 +96,10 @@
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.43.4",
     "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>

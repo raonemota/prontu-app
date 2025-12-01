@@ -14,8 +14,7 @@ import InstallPrompt from './components/InstallPrompt';
 import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 import AgendaPage from './pages/AgendaPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
+import CookieConsent from './components/CookieConsent';
 
 // Configuração dos Domínios
 const APP_DOMAIN = 'app.prontu.ia.br';
@@ -175,7 +174,7 @@ const App: React.FC = () => {
           // O renderPage cuidará de exibir a LandingPage se isLandingDomain for true
 
           // Apenas define para Home na carga inicial se NÃO estivermos na Landing
-          if (!isLandingDomain) {
+          if (!isLandingDomain && activePage === Page.Login) {
              setActivePage(Page.Home);
           }
           fetchData(session.user.id);
@@ -592,8 +591,7 @@ const App: React.FC = () => {
   const renderPage = () => {
     // Se estiver no domínio da Landing Page, força a renderização dela
     // a menos que esteja em localhost (dev) e force a navegação
-    // FIX: Se o usuário clicou em Termos ou Privacidade na Landing Page, permitimos a navegação
-    if (isLandingDomain && activePage !== Page.Terms && activePage !== Page.Privacy) {
+    if (isLandingDomain) {
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
     
@@ -678,28 +676,9 @@ const App: React.FC = () => {
         />;
       case Page.Admin:
         return <AdminPage setActivePage={setActivePage} currentUser={userProfile!} />;
-      case Page.Terms:
-        return <TermsPage setActivePage={setActivePage} />;
-      case Page.Privacy:
-        return <PrivacyPage setActivePage={setActivePage} />;
-      // Caso esteja no domínio do App mas tente acessar landing, redireciona para home ou login
+      // Caso esteja no domínio do App mas tente acessar landing
       case Page.Landing:
-         return session ? <HomePage 
-            patients={patients} 
-            allPatients={allPatients}
-            appointments={appointments} 
-            updateAppointmentStatus={updateAppointmentStatus}
-            updateAppointmentDetails={updateAppointmentDetails}
-            deleteAppointment={deleteAppointment}
-            addAppointment={addAppointment}
-            user={userProfile!}
-            updateUser={updateUserProfile}
-            theme={theme}
-            toggleTheme={toggleTheme}
-            ensureAppointmentsForDate={ensureAppointmentsForDate}
-            setActivePage={setActivePage}
-            recoveryMode={recoveryMode}
-         /> : <LoginPage setActivePage={setActivePage} />;
+         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
       default:
         return <HomePage 
           patients={patients} 
@@ -738,13 +717,15 @@ const App: React.FC = () => {
             <div className="flex items-center justify-center min-h-screen px-4">
               {activePage === Page.SignUp ? (
                 <SignUpPage setActivePage={setActivePage} />
+              ) : activePage === Page.Landing ? (
+                 renderPage()
               ) : (
                 <LoginPage setActivePage={setActivePage} />
               )}
             </div>
           ) : (
             <>
-              {isLandingDomain ? (
+              {isLandingDomain || activePage === Page.Landing ? (
                  <main className="p-0 pb-0">
                     {renderPage()}
                  </main>
@@ -753,14 +734,15 @@ const App: React.FC = () => {
                     {renderPage()}
                  </main>
               )}
-              {/* Só mostra a BottomNav se NÃO for Landing Domain */}
-              {!isLandingDomain && session && activePage !== Page.Terms && activePage !== Page.Privacy && (
+              {/* Só mostra a BottomNav se NÃO for Landing Domain e NÃO estiver na página de Landing */}
+              {!isLandingDomain && activePage !== Page.Landing && session && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}
-              {!isLandingDomain && <InstallPrompt />}
+              {!isLandingDomain && activePage !== Page.Landing && <InstallPrompt />}
             </>
           )}
       </div>
+      {isLandingDomain && <CookieConsent />}
     </div>
   );
 };

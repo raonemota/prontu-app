@@ -42,12 +42,16 @@ const ReportsChartModal: React.FC<ReportsChartModalProps> = ({ isOpen, onClose, 
         const monthKey = app.date.substring(0, 7); // YYYY-MM
         
         const patient = allPatients.find(p => p.id === app.patient_id);
-        const value = patient?.session_value || 0;
+        
+        // Verifica se o paciente existe e se NÃO está desativado
+        if (patient && patient.is_active !== false) {
+            const value = patient.session_value || 0;
 
-        if (!monthlyTotals[monthKey]) {
-            monthlyTotals[monthKey] = 0;
+            if (!monthlyTotals[monthKey]) {
+                monthlyTotals[monthKey] = 0;
+            }
+            monthlyTotals[monthKey] += value;
         }
-        monthlyTotals[monthKey] += value;
     });
 
     // 3. Convert to Array and Sort

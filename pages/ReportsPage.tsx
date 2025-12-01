@@ -80,7 +80,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
     filteredApps.forEach(app => {
         const patient = allPatients.find(p => p.id === app.patient_id);
-        if (patient) {
+        
+        // Verifica se o paciente existe e NÃO está desativado
+        if (patient && patient.is_active !== false) {
             const dateKey = app.date;
             if (!groups[dateKey]) {
                 groups[dateKey] = { date: dateKey, totalValue: 0, items: [] };
@@ -231,9 +233,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           // Filter by Status
           if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
 
-          // Filter by Export Specific Clinic
+          // Filter by Export Specific Clinic AND Active Status
           const patient = allPatients.find(p => p.id === app.patient_id);
           if (!patient || patient.clinic_id !== exportClinicId) return false;
+          
+          // EXCLUDE INACTIVE PATIENTS
+          if (patient.is_active === false) return false;
 
           return true;
       });

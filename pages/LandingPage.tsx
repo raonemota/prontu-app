@@ -41,39 +41,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
   return (
     <div className="bg-white dark:bg-dark-bg min-h-screen font-sans text-dark dark:text-dark-text overflow-x-hidden">
       
-      {/* Custom Styles for Animations */}
-      <style>{`
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-          100% { transform: translateY(0px); }
-        }
-        @keyframes float-delayed {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-15px); }
-          100% { transform: translateY(0px); }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .animate-float-delayed {
-          animation: float-delayed 5s ease-in-out 2s infinite;
-        }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s ease-out forwards;
-        }
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-
       {/* Header / Nav */}
       <nav className="sticky top-0 z-50 bg-white/80 dark:bg-dark-bg/90 backdrop-blur-md border-b border-gray-100 dark:border-dark-border">
         <div className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
@@ -640,7 +607,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     <ul className="space-y-4 mb-8 flex-1">
                         <li className="flex items-center gap-3">
                             <div className="bg-white p-0.5 rounded-full"><CheckIcon className="w-3 h-3 text-primary" /></div>
-                            <span className="text-sm font-medium">Economia de 16%</span>
+                            <span className="text-sm font-medium">Economia de 37%</span>
                         </li>
                         <li className="flex items-center gap-3">
                             <div className="bg-white/20 p-0.5 rounded-full"><CheckIcon className="w-3 h-3 text-white" /></div>
@@ -720,9 +687,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                   <p>&copy; {new Date().getFullYear()} Prontu Gestão. Todos os direitos reservados.</p>
               </div>
               <div className="flex gap-6">
-                  <button onClick={() => setActivePage(Page.Terms)} className="hover:text-primary transition-colors">Termos de Uso</button>
-                  <button onClick={() => setActivePage(Page.Privacy)} className="hover:text-primary transition-colors">Política de Privacidade</button>
-                  <button onClick={() => window.open('mailto:raonemota@hotmail.com')} className="hover:text-primary transition-colors">Suporte</button>
+                  <button className="hover:text-primary transition-colors">Termos de Uso</button>
+                  <button className="hover:text-primary transition-colors">Política de Privacidade</button>
+                  <button onClick={() => window.open('mailto:suporte@prontu.com')} className="hover:text-primary transition-colors">Suporte</button>
               </div>
           </div>
       </footer>

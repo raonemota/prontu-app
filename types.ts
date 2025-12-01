@@ -10,8 +10,6 @@ export enum Page {
   DeactivatedPatients = 'DeactivatedPatients',
   Admin = 'Admin',
   Landing = 'Landing',
-  Terms = 'Terms',
-  Privacy = 'Privacy',
 }
 
 export enum AppointmentStatus {
@@ -70,6 +68,7 @@ export interface Patient {
   clinic_id: number | null;
   clinics: { name: string } | null; // From Supabase join
   phone?: string; // Added phone number
+  is_active?: boolean; // Status do paciente
 }
 
 export interface Appointment {
