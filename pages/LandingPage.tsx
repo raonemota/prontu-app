@@ -14,8 +14,6 @@ interface LandingPageProps {
 }
 
 const APP_URL = "https://app.prontu.ia.br";
-const TERMS_URL = "https://www.prontu.ia.br/termos";
-const PRIVACY_URL = "https://www.prontu.ia.br/privacidade";
 
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
 
@@ -38,10 +36,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
       } else {
           window.location.href = APP_URL;
       }
-  };
-
-  const openLink = (url: string) => {
-      window.open(url, '_blank');
   };
 
   return (
@@ -681,10 +675,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
               </div>
               
               <div className="flex gap-6">
-                  <button onClick={() => openLink(TERMS_URL)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
+                  <button onClick={() => setActivePage(Page.Terms)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
                       Termos de Uso
                   </button>
-                  <button onClick={() => openLink(PRIVACY_URL)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
+                  <button onClick={() => setActivePage(Page.Privacy)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
                       Política de Privacidade
                   </button>
               </div>

@@ -15,6 +15,8 @@ import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
 import AgendaPage from './pages/AgendaPage';
 import CookieConsent from './components/CookieConsent';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 // Configuração dos Domínios
 const APP_DOMAIN = 'app.prontu.ia.br';
@@ -158,6 +160,16 @@ const App: React.FC = () => {
             console.log('SW registration failed: ', registrationError);
           });
       });
+    }
+    
+    // Handle URL path for Landing Domain on initial load
+    if (isLandingDomain) {
+        const path = window.location.pathname;
+        if (path === '/termos') {
+            setActivePage(Page.Terms);
+        } else if (path === '/privacidade') {
+            setActivePage(Page.Privacy);
+        }
     }
 
     const getSession = async () => {
@@ -592,6 +604,8 @@ const App: React.FC = () => {
     // Se estiver no domínio da Landing Page, força a renderização dela
     // a menos que esteja em localhost (dev) e force a navegação
     if (isLandingDomain) {
+        if (activePage === Page.Terms) return <TermsPage onBack={() => setActivePage(Page.Landing)} />;
+        if (activePage === Page.Privacy) return <PrivacyPage onBack={() => setActivePage(Page.Landing)} />;
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
     
@@ -676,6 +690,10 @@ const App: React.FC = () => {
         />;
       case Page.Admin:
         return <AdminPage setActivePage={setActivePage} currentUser={userProfile!} />;
+      case Page.Terms:
+         return <TermsPage onBack={() => setActivePage(isLandingDomain ? Page.Landing : Page.Home)} />;
+      case Page.Privacy:
+         return <PrivacyPage onBack={() => setActivePage(isLandingDomain ? Page.Landing : Page.Home)} />;
       // Caso esteja no domínio do App mas tente acessar landing
       case Page.Landing:
          return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
@@ -719,13 +737,17 @@ const App: React.FC = () => {
                 <SignUpPage setActivePage={setActivePage} />
               ) : activePage === Page.Landing ? (
                  renderPage()
+              ) : activePage === Page.Terms ? (
+                  <TermsPage onBack={() => setActivePage(Page.Login)} />
+              ) : activePage === Page.Privacy ? (
+                  <PrivacyPage onBack={() => setActivePage(Page.Login)} />
               ) : (
                 <LoginPage setActivePage={setActivePage} />
               )}
             </div>
           ) : (
             <>
-              {isLandingDomain || activePage === Page.Landing ? (
+              {isLandingDomain || activePage === Page.Landing || activePage === Page.Terms || activePage === Page.Privacy ? (
                  <main className="p-0 pb-0">
                     {renderPage()}
                  </main>
@@ -734,8 +756,8 @@ const App: React.FC = () => {
                     {renderPage()}
                  </main>
               )}
-              {/* Só mostra a BottomNav se NÃO for Landing Domain e NÃO estiver na página de Landing */}
-              {!isLandingDomain && activePage !== Page.Landing && session && (
+              {/* Só mostra a BottomNav se NÃO for Landing Domain e NÃO estiver na página de Landing, Terms ou Privacy */}
+              {!isLandingDomain && activePage !== Page.Landing && activePage !== Page.Terms && activePage !== Page.Privacy && session && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}
               {!isLandingDomain && activePage !== Page.Landing && <InstallPrompt />}
