@@ -689,7 +689,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
               <div className="flex gap-6">
                   <button className="hover:text-primary transition-colors">Termos de Uso</button>
                   <button className="hover:text-primary transition-colors">Política de Privacidade</button>
-                  <button onClick={() => window.open('mailto:suporte@prontu.com')} className="hover:text-primary transition-colors">Suporte</button>
+                  <button onClick={() => window.open('mailto:suporte@prontu.ia.br')} className="hover:text-primary transition-colors">Suporte</button>
               </div>
           </div>
       </footer>
