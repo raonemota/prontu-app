@@ -14,6 +14,8 @@ interface LandingPageProps {
 }
 
 const APP_URL = "https://app.prontu.ia.br";
+const TERMS_URL = "https://www.prontu.ia.br/termos";
+const PRIVACY_URL = "https://www.prontu.ia.br/privacidade";
 
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
 
@@ -36,6 +38,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
       } else {
           window.location.href = APP_URL;
       }
+  };
+
+  const openLink = (url: string) => {
+      window.open(url, '_blank');
   };
 
   return (
@@ -618,14 +624,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                             <span className="text-sm font-medium">Suporte prioritário</span>
                         </li>
                     </ul>
-
                     <button 
                         onClick={() => handleSubscribe('Semestral')}
-                        className="w-full py-4 bg-white text-primary font-bold rounded-xl shadow-lg hover:bg-gray-50 transition-colors transform hover:-translate-y-1"
+                        className="w-full py-3 bg-white text-primary font-bold rounded-xl shadow-lg hover:bg-gray-100 transition-colors transform hover:-translate-y-0.5"
                     >
-                        Quero Economizar Agora
+                        Assinar Semestral
                     </button>
-                    <p className="text-[10px] text-center mt-3 text-white/90 font-bold flex items-center justify-center gap-1">
+                    <p className="text-[10px] text-center mt-3 text-white/80 font-bold flex items-center justify-center gap-1">
                         <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
                     </p>
                 </div>
@@ -634,62 +639,58 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 <div className="order-4 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
                     <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Anual</h3>
                     <div className="flex flex-col mb-6">
-                        <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 159,90</span>
+                        <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 139,90</span>
                         <div className="flex items-baseline">
-                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
-                            <span className="text-gray-400 ml-2 text-lg">/ano</span>
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 89,90</span>
                         </div>
-                         <div className="inline-block mt-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Preço de Lançamento</span>
+                        <div className="inline-block mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Maior Desconto</span>
                         </div>
                     </div>
                     <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
-                        Pague uma única vez e garanta um ano inteiro.
+                        Para quem busca o melhor custo-benefício a longo prazo.
                     </p>
-                     <ul className="space-y-4 mb-8 flex-1">
+                    <ul className="space-y-4 mb-8 flex-1">
                          <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
-                            <CheckIcon className="w-4 h-4 text-green-500" /> Acesso vitalício aos dados
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Economia de 46%
                         </li>
                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
-                            <CheckIcon className="w-4 h-4 text-green-500" /> Renovação automática
-                        </li>
-                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
-                            <CheckIcon className="w-4 h-4 text-green-500" /> Menor valor mensal
+                            <CheckIcon className="w-4 h-4 text-green-500" /> 1 ano de acesso
                         </li>
                     </ul>
                     <button 
-                         onClick={() => handleSubscribe('Anual')}
-                        className="w-full py-3 border-2 border-primary text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-colors"
+                        onClick={() => handleSubscribe('Anual')}
+                        className="w-full py-3 border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                         Assinar Anual
                     </button>
-                    <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
+                     <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
                         <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
                     </p>
                 </div>
-
-            </div>
-            
-            <div className="mt-16 text-center bg-green-50 dark:bg-green-900/10 p-6 rounded-2xl max-w-3xl mx-auto border border-green-100 dark:border-green-900/30">
-                 <p className="text-sm text-green-800 dark:text-green-300 flex items-center justify-center gap-3 font-medium">
-                    <ShieldCheckIcon className="w-6 h-6" />
-                    <span>Garantia de Satisfação: Teste o plano Premium por 7 dias. Se não gostar, devolvemos seu dinheiro.</span>
-                 </p>
             </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-dark-card py-12 border-t border-gray-100 dark:border-dark-border mt-12">
-          <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-dark-subtext">
-              <div className="mb-4 md:mb-0 text-center md:text-left">
-                  <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-6 w-auto mb-2 opacity-70 mx-auto md:mx-0" />
-                  <p>&copy; {new Date().getFullYear()} Prontu Gestão. Todos os direitos reservados.</p>
+      <footer className="bg-white dark:bg-dark-card py-12 border-t border-gray-100 dark:border-dark-border">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="flex items-center gap-2">
+                  <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-6 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all" />
+                  <span className="text-sm text-gray-500 dark:text-dark-subtext">© {new Date().getFullYear()} Prontu</span>
               </div>
+              
               <div className="flex gap-6">
-                  <button className="hover:text-primary transition-colors">Termos de Uso</button>
-                  <button className="hover:text-primary transition-colors">Política de Privacidade</button>
-                  <button onClick={() => window.open('mailto:suporte@prontu.ia.br')} className="hover:text-primary transition-colors">Suporte</button>
+                  <button onClick={() => openLink(TERMS_URL)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
+                      Termos de Uso
+                  </button>
+                  <button onClick={() => openLink(PRIVACY_URL)} className="text-sm text-gray-500 dark:text-dark-subtext hover:text-primary transition-colors">
+                      Política de Privacidade
+                  </button>
+              </div>
+              
+              <div className="flex gap-4">
+                  <a href="mailto:contato@prontu.ia.br" className="text-sm text-gray-500 hover:text-primary">Contato</a>
               </div>
           </div>
       </footer>
