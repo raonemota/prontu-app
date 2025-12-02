@@ -257,8 +257,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           const { jsPDF } = jspdf;
           const doc = new jsPDF();
 
+          // Configuração de Título com Mês Referência
+          const referenceDate = new Date(startDate + 'T00:00:00');
+          const monthName = referenceDate.toLocaleString('pt-BR', { month: 'long' });
+          const yearRef = referenceDate.getFullYear();
+          const titleWithMonth = `Relatório de Atendimentos - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${yearRef}`;
+
           doc.setFont("helvetica", "bold");
-          doc.text("Relatório de Atendimentos", 14, 20);
+          doc.text(titleWithMonth, 14, 20);
           doc.setFontSize(12);
           doc.setFont("helvetica", "normal");
           
@@ -268,7 +274,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           const formattedStartDate = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR');
           const formattedEndDate = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR');
           doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 14, 44);
-          doc.text(`Total a Receber: ${totalExportValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
+          // removido total a receber do PDF conforme pedido implícito (apenas nome e datas), 
+          // mas se quiser manter o cabeçalho financeiro, descomente abaixo:
+          // doc.text(`Total a Receber: ${totalExportValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
 
           // Aggregate by Patient for PDF
           const patientsMap: { [key: number]: { name: string, clinic: string, dates: string[], total: number } } = {};
@@ -294,29 +302,36 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
           const tableBody = Object.values(patientsMap)
               .sort((a, b) => a.name.localeCompare(b.name))
-              .map(p => [
-                  p.name,
-                  p.clinic,
-                  p.dates.sort((a,b) => {
+              .map(p => {
+                  // Ordena as datas cronologicamente
+                  const sortedDates = p.dates.sort((a,b) => {
                       const [d1, m1, y1] = a.split('/').map(Number);
                       const [d2, m2, y2] = b.split('/').map(Number);
                       return new Date(y1, m1-1, d1).getTime() - new Date(y2, m2-1, d2).getTime();
-                  }).join(' | '),
-                  p.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-              ]);
+                  });
+
+                  // Formata para dd/mm e junta com ' - '
+                  const formattedDatesString = sortedDates.map(dateStr => {
+                      // dateStr vem como dd/mm/yyyy. Pegamos apenas os primeiros 5 chars (dd/mm)
+                      return dateStr.substring(0, 5);
+                  }).join(' - ');
+
+                  return [
+                      p.name,
+                      formattedDatesString
+                  ];
+              });
 
           doc.autoTable({
-              startY: 60,
-              head: [['Paciente', 'Clínica', 'Datas dos Atendimentos', 'Valor Total']],
+              startY: 55,
+              head: [['Paciente', 'Datas dos Atendimentos']],
               body: tableBody,
               theme: 'striped',
               headStyles: { fillColor: [122, 58, 255], fontSize: 10 },
               styles: { fontSize: 9, cellPadding: 3 },
               columnStyles: {
-                  0: { cellWidth: 40 },
-                  1: { cellWidth: 30 },
-                  2: { cellWidth: 'auto' },
-                  3: { cellWidth: 30, halign: 'right' }
+                  0: { cellWidth: 60 }, // Coluna Nome fixa ou maior
+                  1: { cellWidth: 'auto' } // Coluna Datas ocupa o resto
               }
           });
           
@@ -324,6 +339,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
       } else {
           // --- GERAÇÃO DE CSV (EXCEL) ---
+          // Mantendo a lógica CSV original por enquanto, pois o pedido foi específico para PDF
+          // Se desejar alterar o CSV também, avise.
           const csvRows = [];
           // Headers
           csvRows.push(['Data', 'Paciente', 'Categoria', 'Status', 'Valor'].join(';'));
