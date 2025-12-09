@@ -37,6 +37,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
   const [exportClinicId, setExportClinicId] = useState<number | ''>('');
   const [exportFormat, setExportFormat] = useState<'pdf' | 'csv'>('pdf');
   
+  // Opções de Customização do PDF
+  const [exportPdfColor, setExportPdfColor] = useState<'color' | 'grayscale'>('color');
+  const [exportPdfStyle, setExportPdfStyle] = useState<'striped' | 'grid'>('striped');
+  
   // Estados para o Modal Premium
   const [isPremiumAlertOpen, setIsPremiumAlertOpen] = useState(false);
   const [premiumAlertInfo, setPremiumAlertInfo] = useState({ title: '', message: '' });
@@ -185,12 +189,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           setExportClinicId('');
       }
       setExportFormat('pdf'); // Reset format to PDF
+      setExportPdfColor('color'); // Reset to Color
+      setExportPdfStyle('striped'); // Reset to Striped
       setIsExportModalOpen(true);
   };
   
   const handleOpenChartModal = () => {
-      // Lógica de Controle de Acesso (mesma da exportação para consistência, ou liberar para todos)
-      // Vamos liberar para todos por enquanto como um "teaser" ou funcionalidade básica
       setIsChartModalOpen(true);
   };
 
@@ -216,7 +220,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           return;
       }
 
-      // 1. Filtrar dados especificamente para a exportação (independente da visualização da tela)
+      // 1. Filtrar dados especificamente para a exportação
       const start = new Date(startDate);
       const end = new Date(endDate);
       start.setHours(0,0,0,0);
@@ -227,27 +231,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           const appDate = new Date(app.date);
           if (isNaN(appDate.getTime())) return false;
           
-          // Filter by Date Range
           if (appDate < start || appDate > end) return false;
-
-          // Filter by Status
           if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
 
-          // Filter by Export Specific Clinic AND Active Status
           const patient = allPatients.find(p => p.id === app.patient_id);
           if (!patient || patient.clinic_id !== exportClinicId) return false;
           
-          // EXCLUDE INACTIVE PATIENTS
           if (patient.is_active === false) return false;
 
           return true;
-      });
-
-      // Calcular total para o relatório
-      let totalExportValue = 0;
-      exportData.forEach(app => {
-          const patient = allPatients.find(p => p.id === app.patient_id);
-          if(patient) totalExportValue += (patient.session_value || 0);
       });
 
       const clinicName = clinics.find(c => c.id === exportClinicId)?.name || 'N/A';
@@ -261,25 +253,21 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           const referenceDate = new Date(startDate + 'T00:00:00');
           const monthName = referenceDate.toLocaleString('pt-BR', { month: 'long' });
           const yearRef = referenceDate.getFullYear();
-          const titleWithMonth = `Relatório de Atendimentos - ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${yearRef}`;
+          const monthCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+          const titleWithMonth = `Relatório de Atendimentos - ${monthCapitalized} ${yearRef}`;
 
+          // Header mais compacto (Ajustado)
           doc.setFont("helvetica", "bold");
-          doc.text(titleWithMonth, 14, 20);
-          doc.setFontSize(12);
-          doc.setFont("helvetica", "normal");
+          doc.setFontSize(11); // Reduzido de 12
+          doc.text(titleWithMonth, 14, 10); // Y reduzido de 12 para 10
           
-          doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 28);
-          doc.text(`Clínica: ${clinicName}`, 14, 36);
+          doc.setFontSize(8); 
+          doc.setFont("helvetica", "normal");
+          doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 14); // Y reduzido de 17 para 14
+          doc.text(`Clínica: ${clinicName}`, 14, 18); // Y reduzido de 21 para 18
 
-          const formattedStartDate = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR');
-          const formattedEndDate = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR');
-          doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 14, 44);
-          // removido total a receber do PDF conforme pedido implícito (apenas nome e datas), 
-          // mas se quiser manter o cabeçalho financeiro, descomente abaixo:
-          // doc.text(`Total a Receber: ${totalExportValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 52);
-
-          // Aggregate by Patient for PDF
-          const patientsMap: { [key: number]: { name: string, clinic: string, dates: string[], total: number } } = {};
+          // Agregar por Paciente
+          const patientsMap: { [key: number]: { name: string, dates: string[] } } = {};
 
           exportData.forEach(app => {
               const patient = allPatients.find(p => p.id === app.patient_id);
@@ -287,87 +275,95 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                   if (!patientsMap[patient.id]) {
                       patientsMap[patient.id] = {
                           name: patient.name || 'Nome não informado',
-                          clinic: clinicName,
-                          dates: [],
-                          total: 0
+                          dates: []
                       };
                   }
-                  const fullFormattedDate = new Date(app.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                  if (!patientsMap[patient.id].dates.includes(fullFormattedDate)) {
-                      patientsMap[patient.id].dates.push(fullFormattedDate);
+                  // app.date is YYYY-MM-DD
+                  if (app.date && !patientsMap[patient.id].dates.includes(app.date)) {
+                      patientsMap[patient.id].dates.push(app.date);
                   }
-                  patientsMap[patient.id].total += (patient.session_value || 0);
               }
           });
 
+          // Preparar Body para autoTable
           const tableBody = Object.values(patientsMap)
               .sort((a, b) => a.name.localeCompare(b.name))
               .map(p => {
-                  // Ordena as datas cronologicamente
-                  const sortedDates = p.dates.sort((a,b) => {
-                      const [d1, m1, y1] = a.split('/').map(Number);
-                      const [d2, m2, y2] = b.split('/').map(Number);
-                      return new Date(y1, m1-1, d1).getTime() - new Date(y2, m2-1, d2).getTime();
+                  const sortedDates = p.dates.sort();
+                  const formattedDates = sortedDates.map(d => {
+                      const [y, m, day] = d.split('-');
+                      return `${day}/${m}`; // Formato dd/mm
                   });
 
-                  // Formata para dd/mm e junta com ' - '
-                  const formattedDatesString = sortedDates.map(dateStr => {
-                      // dateStr vem como dd/mm/yyyy. Pegamos apenas os primeiros 5 chars (dd/mm)
-                      return dateStr.substring(0, 5);
-                  }).join(' - ');
-
-                  return [
-                      p.name,
-                      formattedDatesString
-                  ];
+                  return {
+                      name: p.name,
+                      datesStr: formattedDates.join(' - ') // Separador com traço
+                  };
               });
+          
+          // Configuração de Estilo do PDF (Cor e Zebra)
+          const headerFillColor = exportPdfColor === 'color' ? [122, 58, 255] : [60, 60, 60];
+          const headerTextColor = [255, 255, 255];
+          const tableTheme = exportPdfStyle; // 'striped' ou 'grid'
 
           doc.autoTable({
-              startY: 55,
+              startY: 22, // Começa mais perto do cabeçalho (Reduzido de 25)
               head: [['Paciente', 'Datas dos Atendimentos']],
               body: tableBody,
-              theme: 'striped',
-              headStyles: { fillColor: [122, 58, 255], fontSize: 10 },
-              styles: { fontSize: 9, cellPadding: 3 },
+              columns: [
+                { header: 'Paciente', dataKey: 'name' },
+                { header: 'Datas dos Atendimentos', dataKey: 'datesStr' }
+              ],
+              theme: tableTheme,
+              headStyles: { 
+                  fillColor: headerFillColor, 
+                  fontSize: 8, 
+                  textColor: headerTextColor,
+                  cellPadding: 1, // Reduzido de 1.5
+                  minCellHeight: 0
+              },
+              styles: { 
+                  fontSize: 7.5, // Reduzido de 8
+                  cellPadding: 0.8, // Compactação máxima
+                  valign: 'middle',
+                  overflow: 'linebreak',
+                  minCellHeight: 0
+              },
               columnStyles: {
-                  0: { cellWidth: 60 }, // Coluna Nome fixa ou maior
+                  0: { cellWidth: 40 }, // Reduzido de 70 para 40 para maximizar espaço das datas
                   1: { cellWidth: 'auto' } // Coluna Datas ocupa o resto
               }
           });
           
-          doc.save(`relatorio_${clinicName}_${startDate}_${endDate}.pdf`);
+          doc.save(`relatorio_${clinicName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
 
       } else {
           // --- GERAÇÃO DE CSV (EXCEL) ---
-          // Mantendo a lógica CSV original por enquanto, pois o pedido foi específico para PDF
-          // Se desejar alterar o CSV também, avise.
           const csvRows = [];
-          // Headers
           csvRows.push(['Data', 'Paciente', 'Categoria', 'Status', 'Valor'].join(';'));
-
-          // Sort by date descending for CSV
           exportData.sort((a, b) => b.date.localeCompare(a.date));
 
+          let totalExportValue = 0;
           exportData.forEach(app => {
               const patient = allPatients.find(p => p.id === app.patient_id);
               if (patient) {
                   const formattedDate = new Date(app.date + 'T00:00:00').toLocaleDateString('pt-BR');
-                  const value = (patient.session_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                  const value = (patient.session_value || 0);
+                  totalExportValue += value;
                   
                   csvRows.push([
                       formattedDate,
-                      `"${patient.name || ''}"`, // Quote names to handle commas
+                      `"${patient.name || ''}"`,
                       patient.category,
                       app.status,
-                      value
+                      value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
                   ].join(';'));
               }
           });
 
-          // Add Total Row
           csvRows.push(['', '', '', 'TOTAL', totalExportValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })].join(';'));
 
-          const csvString = "\uFEFF" + csvRows.join('\n'); // Add BOM for Excel UTF-8 compatibility
+          const csvString = "\uFEFF" + csvRows.join('\n');
           const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
           const link = document.createElement("a");
           const url = URL.createObjectURL(blob);
@@ -563,7 +559,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                         </select>
                     </div>
 
-                    <div className="mb-6">
+                    <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 dark:text-dark-subtext mb-2">Formato do Arquivo</label>
                         <div className="flex space-x-4">
                             <label className="flex items-center cursor-pointer">
@@ -590,6 +586,71 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                             </label>
                         </div>
                     </div>
+
+                    {/* Opções exclusivas para PDF */}
+                    {exportFormat === 'pdf' && (
+                        <div className="bg-gray-50 dark:bg-dark-bg p-3 rounded-lg border border-gray-100 dark:border-dark-border mb-4 animate-fade-in">
+                            <h4 className="text-xs font-bold text-gray-500 dark:text-dark-subtext uppercase mb-3">Opções do PDF</h4>
+                            
+                            {/* Estilo da Tabela */}
+                            <div className="mb-3">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Estilo da Tabela</label>
+                                <div className="flex space-x-3">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="pdfStyle" 
+                                            value="striped" 
+                                            checked={exportPdfStyle === 'striped'} 
+                                            onChange={() => setExportPdfStyle('striped')}
+                                            className="form-radio text-primary h-3.5 w-3.5"
+                                        />
+                                        <span className="ml-1.5 text-dark dark:text-dark-text text-xs">Zebrada</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="pdfStyle" 
+                                            value="grid" 
+                                            checked={exportPdfStyle === 'grid'} 
+                                            onChange={() => setExportPdfStyle('grid')}
+                                            className="form-radio text-primary h-3.5 w-3.5"
+                                        />
+                                        <span className="ml-1.5 text-dark dark:text-dark-text text-xs">Simples (Bordas)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Cor do Cabeçalho */}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 dark:text-dark-subtext mb-1">Cor do Cabeçalho</label>
+                                <div className="flex space-x-3">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="pdfColor" 
+                                            value="color" 
+                                            checked={exportPdfColor === 'color'} 
+                                            onChange={() => setExportPdfColor('color')}
+                                            className="form-radio text-primary h-3.5 w-3.5"
+                                        />
+                                        <span className="ml-1.5 text-dark dark:text-dark-text text-xs">Colorido (Roxo)</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            name="pdfColor" 
+                                            value="grayscale" 
+                                            checked={exportPdfColor === 'grayscale'} 
+                                            onChange={() => setExportPdfColor('grayscale')}
+                                            className="form-radio text-primary h-3.5 w-3.5"
+                                        />
+                                        <span className="ml-1.5 text-dark dark:text-dark-text text-xs">Preto e Branco</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="mt-6 flex justify-end space-x-3">
                         <button type="button" onClick={() => setIsExportModalOpen(false)} className="px-4 py-2 bg-gray-200 dark:bg-dark-border text-gray-800 dark:text-dark-text rounded-lg font-medium">Cancelar</button>
