@@ -6,8 +6,6 @@ import EditAppointmentModal from '../components/EditAppointmentModal';
 import { ProfileModal } from '../components/ProfileModal';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
-import { ChevronDoubleLeftIcon } from '../components/icons/ChevronDoubleLeftIcon';
-import { ChevronDoubleRightIcon } from '../components/icons/ChevronDoubleRightIcon';
 import FeatureAnnouncementModal from '../components/FeatureAnnouncementModal';
 import { StarIcon } from '../components/icons/StarIcon';
 import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
@@ -286,9 +284,34 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   }, [selectedDate, patients, ensureAppointmentsForDate]);
 
   const dailyAppointments = useMemo(() => {
-    return appointments
-      .filter(app => app.date === selectedDateString)
-      .sort((a, b) => {
+    const appsForDay = appointments.filter(app => app.date === selectedDateString);
+
+    // Deduplicação: Agrupar por paciente e selecionar o "melhor" agendamento
+    const uniqueAppsMap = new Map<number, Appointment>();
+
+    appsForDay.forEach(app => {
+        const existingApp = uniqueAppsMap.get(app.patient_id);
+        
+        if (!existingApp) {
+            uniqueAppsMap.set(app.patient_id, app);
+        } else {
+            // Se já existe um agendamento para este paciente, verificamos qual manter
+            const existingHasStatus = existingApp.status && existingApp.status !== AppointmentStatus.NoStatus;
+            const currentHasStatus = app.status && app.status !== AppointmentStatus.NoStatus;
+
+            // Se o atual tem status e o existente não, substituímos pelo atual (mais relevante)
+            if (currentHasStatus && !existingHasStatus) {
+                uniqueAppsMap.set(app.patient_id, app);
+            }
+            // Se ambos têm status ou ambos não têm, mantemos o primeiro que entrou (existingApp)
+            // ou poderíamos usar timestamp se existisse para pegar o mais recente
+        }
+    });
+
+    // Converter de volta para array
+    const deduplicatedApps = Array.from(uniqueAppsMap.values());
+
+    return deduplicatedApps.sort((a, b) => {
         // Find corresponding patients
         const patientA = allPatients.find(p => p.id === a.patient_id);
         const patientB = allPatients.find(p => p.id === b.patient_id);
@@ -305,7 +328,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
         }
         
         return (a.time || '').localeCompare(b.time || '');
-      });
+    });
   }, [appointments, selectedDateString, allPatients]);
   
   const handleSaveProfile = (updatedUser: Omit<User, 'id' | 'plan'>) => {

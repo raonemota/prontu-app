@@ -68,6 +68,9 @@ const App: React.FC = () => {
   const userProfileRef = useRef<User | null>(null);
   // Ref para activePage para usar dentro do listener de auth sem recriar o efeito
   const activePageRef = useRef<Page>(activePage);
+  
+  // Ref para evitar execução duplicada do ensureAppointmentsForDate (Race Condition Lock)
+  const ensuringAppointmentsRef = useRef<Set<string>>(new Set());
 
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -460,50 +463,96 @@ const App: React.FC = () => {
       const day = String(safeDate.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
-      const dayOfWeek = safeDate.getDay(); // 0 (Dom) a 6 (Sab)
-
-      const newAppointments: Omit<Appointment, 'id'>[] = [];
-
-      const relevantPatients = patients.filter(p =>
-        Array.isArray(p.appointment_days) && p.appointment_days.includes(dayOfWeek)
-      );
-
-      for (const patient of relevantPatients) {
-        const exists = appointments.some(a => a.patient_id === patient.id && a.date === dateString);
-        if (!exists) {
-           // Verifica se existe um horário específico para este dia
-           const specificTime = patient.appointment_times ? patient.appointment_times[dayOfWeek.toString()] : null;
-           
-           // Se existir horário específico usa ele, caso contrário usa o fallback appointment_time
-           const timeToUse = specificTime || patient.appointment_time || '09:00';
-
-           newAppointments.push({
-              patient_id: patient.id,
-              user_id: session.user.id,
-              date: dateString,
-              time: timeToUse,
-              status: AppointmentStatus.NoStatus,
-          });
-        }
+      // LOCK: Previne execução simultânea (Race Condition Fix)
+      // Se já estiver processando esta data, retorna imediatamente
+      if (ensuringAppointmentsRef.current.has(dateString)) {
+          return;
       }
+      ensuringAppointmentsRef.current.add(dateString);
 
-      if (newAppointments.length > 0) {
-          const { data, error } = await supabase.from('appointments').insert(newAppointments).select();
-          if (error) {
-             console.error("Error ensuring appointments:", error);
-          } else if (data) {
-             setAppointments(prev => [...prev, ...data].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
-          }
+      try {
+        const dayOfWeek = safeDate.getDay(); // 0 (Dom) a 6 (Sab)
+
+        // IMPORTANTE: Consultar o banco de dados para ter certeza absoluta que não existem
+        // Confiar apenas no state 'appointments' pode falhar se o React ainda não atualizou
+        const { data: existingDbApps } = await supabase
+            .from('appointments')
+            .select('patient_id')
+            .eq('date', dateString)
+            .eq('user_id', session.user.id);
+
+        // Cria um Set com IDs dos pacientes que JÁ têm agendamento no banco neste dia
+        const existingPatientIds = new Set(existingDbApps?.map(a => a.patient_id) || []);
+
+        const newAppointments: Omit<Appointment, 'id'>[] = [];
+
+        const relevantPatients = patients.filter(p =>
+            Array.isArray(p.appointment_days) && p.appointment_days.includes(dayOfWeek)
+        );
+
+        for (const patient of relevantPatients) {
+            // Verifica contra o Set do banco, não apenas o state local
+            if (!existingPatientIds.has(patient.id)) {
+                // Verifica se existe um horário específico para este dia
+                const specificTime = patient.appointment_times ? patient.appointment_times[dayOfWeek.toString()] : null;
+                
+                // Se existir horário específico usa ele, caso contrário usa o fallback appointment_time
+                const timeToUse = specificTime || patient.appointment_time || '09:00';
+
+                newAppointments.push({
+                    patient_id: patient.id,
+                    user_id: session.user.id,
+                    date: dateString,
+                    time: timeToUse,
+                    status: AppointmentStatus.NoStatus,
+                });
+            }
+        }
+
+        if (newAppointments.length > 0) {
+            const { data, error } = await supabase.from('appointments').insert(newAppointments).select();
+            if (error) {
+                console.error("Error ensuring appointments:", error);
+            } else if (data) {
+                // Ao inserir, precisamos garantir que não vamos adicionar duplicatas no state local
+                // caso o realtime ou outra função já tenha feito isso
+                setAppointments(prev => {
+                    const currentIds = new Set(prev.map(a => a.id));
+                    const uniqueNew = data.filter(a => !currentIds.has(a.id));
+                    return [...prev, ...uniqueNew].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || ''));
+                });
+            }
+        }
+      } finally {
+        // UNLOCK: Libera a data para ser processada novamente se necessário
+        ensuringAppointmentsRef.current.delete(dateString);
       }
   };
 
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'user_id'>) => {
     if (!session) return;
+    
+    // Check Client Side (Rapid Feedback)
     if (appointments.some(a => a.patient_id === appointment.patient_id && a.date === appointment.date)) {
         alert("Paciente já possui um atendimento neste dia."); return;
     }
     if (appointments.some(a => a.date === appointment.date && a.time === appointment.time)) {
         alert("Já existe um atendimento neste horário."); return;
+    }
+
+    // Server Side Check (Safety Net against Race Conditions)
+    const { data: duplicateCheck } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('patient_id', appointment.patient_id)
+        .eq('date', appointment.date)
+        .single();
+    
+    if (duplicateCheck) {
+        alert("Ops! Parece que um agendamento para este paciente já foi criado neste dia.");
+        // Refresh data to sync state
+        fetchData(session.user.id); 
+        return;
     }
 
     const newAppointment = { ...appointment, user_id: session.user.id };

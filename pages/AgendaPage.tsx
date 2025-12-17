@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Appointment, Patient, AppointmentStatus, Page } from '../types';
 import SubPageHeader from '../components/SubPageHeader';
@@ -98,7 +97,26 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     const processedPatientIds = new Set<number>();
 
     // 1. Verificar agendamentos REAIS no banco para este dia (Matches YYYY-MM-DD string)
-    const apps = appointments.filter(a => a.date === dateStr);
+    // Aplicando Deduplicação visual para "proteger" a lista
+    const rawApps = appointments.filter(a => a.date === dateStr);
+    const uniqueAppsMap = new Map<number, Appointment>();
+
+    rawApps.forEach(app => {
+        const existingApp = uniqueAppsMap.get(app.patient_id);
+        if (!existingApp) {
+            uniqueAppsMap.set(app.patient_id, app);
+        } else {
+            // Deduplicação: Prioriza o que tem status (diferente de NoStatus)
+            const existingHasStatus = existingApp.status && existingApp.status !== AppointmentStatus.NoStatus;
+            const currentHasStatus = app.status && app.status !== AppointmentStatus.NoStatus;
+
+            if (currentHasStatus && !existingHasStatus) {
+                uniqueAppsMap.set(app.patient_id, app);
+            }
+        }
+    });
+
+    const apps = Array.from(uniqueAppsMap.values());
     
     apps.forEach(app => {
         const patient = allPatients.find(p => p.id === app.patient_id);
