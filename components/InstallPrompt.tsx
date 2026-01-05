@@ -70,49 +70,51 @@ const InstallPrompt: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-50 md:left-1/2 md:transform md:-translate-x-1/2 md:w-full md:max-w-[800px] animate-fade-in-up">
-      <div className="bg-primary text-white p-4 rounded-xl shadow-lg shadow-primary/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        
-        <div className="flex-1">
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <img 
-                src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" 
-                alt="App Icon" 
-                className="w-6 h-6 rounded bg-white object-contain" 
-            />
-            Instalar App Prontu
-          </h3>
-          <p className="text-xs opacity-95 mt-1 leading-relaxed">
-            {isIOS 
-              ? "Para instalar no iPhone: Toque no botão de Compartilhar abaixo e depois em 'Adicionar à Tela de Início'."
-              : "Instale o aplicativo para acesso rápido e melhor experiência."}
-          </p>
-        </div>
+    <div className="fixed bottom-24 left-0 right-0 z-50 flex justify-center pointer-events-none">
+      <div className="w-full max-w-[800px] px-4 animate-fade-in-up pointer-events-auto relative">
+        <div className="bg-primary text-white p-4 rounded-xl shadow-lg shadow-primary/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          
+          <div className="flex-1">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <img 
+                  src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/Untitled_Project-removebg-preview.png" 
+                  alt="App Icon" 
+                  className="w-6 h-6 rounded bg-white object-contain" 
+              />
+              Instalar App Prontu
+            </h3>
+            <p className="text-xs opacity-95 mt-1 leading-relaxed">
+              {isIOS 
+                ? "Para instalar no iPhone: Toque no botão de Compartilhar abaixo e depois em 'Adicionar à Tela de Início'."
+                : "Instale o aplicativo para acesso rápido e melhor experiência."}
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3 self-end md:self-auto">
-            {!isIOS && (
-                <button 
-                    onClick={handleInstallClick}
-                    className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap"
-                >
-                    Instalar Agora
-                </button>
-            )}
-            <button 
-                onClick={() => setIsVisible(false)}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
-                aria-label="Fechar"
-            >
-                <CloseIcon className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-3 self-end md:self-auto">
+              {!isIOS && (
+                  <button 
+                      onClick={handleInstallClick}
+                      className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors shadow-sm whitespace-nowrap"
+                  >
+                      Instalar Agora
+                  </button>
+              )}
+              <button 
+                  onClick={() => setIsVisible(false)}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors text-white"
+                  aria-label="Fechar"
+              >
+                  <CloseIcon className="w-5 h-5" />
+              </button>
+          </div>
         </div>
+        
+        {isIOS && (
+          <div className="absolute -bottom-10 left-0 right-0 flex justify-center text-primary animate-bounce md:hidden">
+             ▼
+          </div>
+        )}
       </div>
-      
-      {isIOS && (
-        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 text-primary animate-bounce hidden md:hidden">
-           ▼
-        </div>
-      )}
     </div>
   );
 };
