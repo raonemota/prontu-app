@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Page, Patient, Appointment, AppointmentStatus, User, Clinic, Gender } from './types';
 import HomePage from './pages/HomePage';
@@ -111,7 +112,6 @@ const App: React.FC = () => {
         setLoading(false);
         if (!session && !userProfile) {
             // Se demorou demais e não tem nada, assume que não logou ou falhou rede
-            // Não faz nada drástico, apenas libera a tela, o renderPage vai decidir o que mostrar
         }
       }
     }, 15000); // 15 seconds max load time
@@ -185,19 +185,12 @@ const App: React.FC = () => {
 
         setSession(session);
         if (session) {
-          // Permite que o usuário logado visualize a Landing Page sem redirect automático
-          // O renderPage cuidará de exibir a LandingPage se isLandingDomain for true
-
-          // Apenas define para Home na carga inicial se NÃO estivermos na Landing
           if (!isLandingDomain && activePage === Page.Login) {
              setActivePage(Page.Home);
           }
           fetchData(session.user.id);
         } else {
           setLoading(false);
-          // Se não houver sessão:
-          // isLandingDomain = true -> Fica na Landing Page
-          // isLandingDomain = false -> Fica no Login (definido no useState inicial)
         }
       } catch (error) {
         console.error("Error getting session:", getErrorMessage(error));
@@ -222,8 +215,6 @@ const App: React.FC = () => {
         setErrorState(null);
         setRecoveryMode(false);
         
-        // Se sair no domínio do App, vai para Login
-        // Se sair no domínio da Landing (raro, mas possível), fica na Landing
         if (!isLandingDomain) {
             setActivePage(Page.Login);
         }
@@ -239,14 +230,11 @@ const App: React.FC = () => {
       }
 
       if (eventType === 'PASSWORD_RECOVERY') {
-          console.log("Password recovery event detected");
           setRecoveryMode(true);
       }
 
       setSession(session);
       if (session) {
-        // Usa o Ref para verificar a página atual sem causar re-render ou re-execução do efeito
-        // Se estiver na Landing, não forçamos Home
         if (!isLandingDomain && (activePageRef.current === Page.Login || activePageRef.current === Page.SignUp)) {
             setActivePage(Page.Home);
         }
@@ -264,18 +252,15 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-    // Removido activePage das dependências para evitar reset de navegação
   }, [isLandingDomain]); 
   
   const fetchData = async (userId: string) => {
-      // Only show full screen loading if we don't have a profile loaded yet.
       if (!userProfileRef.current) {
           setLoading(true);
       }
       setErrorState(null);
       
       try {
-          // Update last sign in time
           await supabase
             .from('users')
             .update({ last_sign_in_at: new Date().toISOString() })
@@ -290,7 +275,6 @@ const App: React.FC = () => {
           if (profileError || !profileData) {
               if (!userProfileRef.current) {
                   const errorMessage = profileError ? getErrorMessage(profileError) : 'Perfil do usuário não encontrado.';
-                  console.error("Erro crítico ao buscar perfil do usuário:", errorMessage);
                   throw new Error(errorMessage);
               }
           }
@@ -325,6 +309,7 @@ const App: React.FC = () => {
           if (deactivatedPatientsError) throw deactivatedPatientsError;
           setDeactivatedPatients(deactivatedPatientsData as Patient[] || []);
 
+          // Limitado a 1000 pelo Supabase por padrão. Por isso precisamos do targeted fetch no ensureAppointmentsForDate.
           const { data: appointmentsData, error: appointmentsError } = await supabase
               .from('appointments')
               .select('*')
@@ -339,7 +324,6 @@ const App: React.FC = () => {
           if (!userProfileRef.current) {
               setErrorState(errorMessage);
           } else {
-              // Se já temos perfil carregado, mostramos alert, mas não travamos a app
                alert(`Não foi possível atualizar alguns dados: ${errorMessage}\nVerifique sua conexão.`);
           }
       } finally {
@@ -362,7 +346,6 @@ const App: React.FC = () => {
       }
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao atualizar perfil:", errorMessage);
       alert(`Erro ao atualizar perfil: ${errorMessage}`);
     }
   };
@@ -382,7 +365,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('patients').insert(newPatientData).select('*, clinics(name)').single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao adicionar paciente:", errorMessage);
       alert(`Erro ao adicionar paciente: ${errorMessage}`);
     } else if (data) {
       setPatients(prev => [...prev, data as Patient]);
@@ -399,7 +381,6 @@ const App: React.FC = () => {
     
     if (error) {
         const errorMessage = getErrorMessage(error);
-        console.error("Erro ao atualizar paciente:", errorMessage);
         alert(`Erro ao atualizar paciente: ${errorMessage}`);
     } else if (data) {
       setPatients(prev => prev.map(p => p.id === patientId ? data as Patient : p));
@@ -446,7 +427,7 @@ const App: React.FC = () => {
       return false;
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
-      alert(`Falha ao reativar o paciente: ${errorMessage}\n\nVerifique se a função 'activate_patient_for_user' foi criada no editor SQL do Supabase.`);
+      alert(`Falha ao reativar o paciente: ${errorMessage}`);
       return false;
     }
   };
@@ -454,7 +435,6 @@ const App: React.FC = () => {
   const ensureAppointmentsForDate = async (date: Date) => {
       if (!session) return;
       
-      // FIX: Noon Strategy (Estratégia do Meio-Dia)
       const safeDate = new Date(date);
       safeDate.setHours(12, 0, 0, 0);
 
@@ -463,27 +443,37 @@ const App: React.FC = () => {
       const day = String(safeDate.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
-      // LOCK: Previne execução simultânea (Race Condition Fix)
-      // Se já estiver processando esta data, retorna imediatamente
       if (ensuringAppointmentsRef.current.has(dateString)) {
           return;
       }
       ensuringAppointmentsRef.current.add(dateString);
 
       try {
-        const dayOfWeek = safeDate.getDay(); // 0 (Dom) a 6 (Sab)
+        const dayOfWeek = safeDate.getDay(); 
 
-        // IMPORTANTE: Consultar o banco de dados para ter certeza absoluta que não existem
-        // Confiar apenas no state 'appointments' pode falhar se o React ainda não atualizou
+        // Consultar o banco de dados para garantir que temos todos os agendamentos deste dia no state
         const { data: existingDbApps } = await supabase
             .from('appointments')
-            .select('patient_id')
+            .select('*')
             .eq('date', dateString)
             .eq('user_id', session.user.id);
 
-        // Cria um Set com IDs dos pacientes que JÁ têm agendamento no banco neste dia
-        const existingPatientIds = new Set(existingDbApps?.map(a => a.patient_id) || []);
+        // Atualiza o state local se houver agendamentos no banco que não estão no state
+        if (existingDbApps && existingDbApps.length > 0) {
+            setAppointments(prev => {
+                const currentIds = new Set(prev.map(a => a.id));
+                const missingInState = existingDbApps.filter(a => !currentIds.has(a.id));
+                
+                if (missingInState.length === 0) return prev;
+                
+                return [...prev, ...missingInState].sort((a, b) => 
+                    getSortableDate(a.date) - getSortableDate(b.date) || 
+                    (a.time || '').localeCompare(b.time || '')
+                );
+            });
+        }
 
+        const existingPatientIds = new Set(existingDbApps?.map(a => a.patient_id) || []);
         const newAppointments: Omit<Appointment, 'id'>[] = [];
 
         const relevantPatients = patients.filter(p =>
@@ -491,12 +481,8 @@ const App: React.FC = () => {
         );
 
         for (const patient of relevantPatients) {
-            // Verifica contra o Set do banco, não apenas o state local
             if (!existingPatientIds.has(patient.id)) {
-                // Verifica se existe um horário específico para este dia
                 const specificTime = patient.appointment_times ? patient.appointment_times[dayOfWeek.toString()] : null;
-                
-                // Se existir horário específico usa ele, caso contrário usa o fallback appointment_time
                 const timeToUse = specificTime || patient.appointment_time || '09:00';
 
                 newAppointments.push({
@@ -514,17 +500,17 @@ const App: React.FC = () => {
             if (error) {
                 console.error("Error ensuring appointments:", error);
             } else if (data) {
-                // Ao inserir, precisamos garantir que não vamos adicionar duplicatas no state local
-                // caso o realtime ou outra função já tenha feito isso
                 setAppointments(prev => {
                     const currentIds = new Set(prev.map(a => a.id));
                     const uniqueNew = data.filter(a => !currentIds.has(a.id));
-                    return [...prev, ...uniqueNew].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || ''));
+                    return [...prev, ...uniqueNew].sort((a, b) => 
+                        getSortableDate(a.date) - getSortableDate(b.date) || 
+                        (a.time || '').localeCompare(b.time || '')
+                    );
                 });
             }
         }
       } finally {
-        // UNLOCK: Libera a data para ser processada novamente se necessário
         ensuringAppointmentsRef.current.delete(dateString);
       }
   };
@@ -532,7 +518,6 @@ const App: React.FC = () => {
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'user_id'>) => {
     if (!session) return;
     
-    // Check Client Side (Rapid Feedback)
     if (appointments.some(a => a.patient_id === appointment.patient_id && a.date === appointment.date)) {
         alert("Paciente já possui um atendimento neste dia."); return;
     }
@@ -540,7 +525,6 @@ const App: React.FC = () => {
         alert("Já existe um atendimento neste horário."); return;
     }
 
-    // Server Side Check (Safety Net against Race Conditions)
     const { data: duplicateCheck } = await supabase
         .from('appointments')
         .select('id')
@@ -550,7 +534,6 @@ const App: React.FC = () => {
     
     if (duplicateCheck) {
         alert("Ops! Parece que um agendamento para este paciente já foi criado neste dia.");
-        // Refresh data to sync state
         fetchData(session.user.id); 
         return;
     }
@@ -559,7 +542,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('appointments').insert(newAppointment).select().single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao adicionar agendamento:", errorMessage);
       alert(`Erro ao adicionar agendamento: ${errorMessage}`);
     } else if (data) {
       setAppointments(prev => [...prev, data].sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
@@ -570,7 +552,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('appointments').update({ status }).eq('id', appointmentId).select().single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao atualizar status:", errorMessage);
       alert(`Erro ao atualizar status: ${errorMessage}`);
     } else if (data) {
       setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)));
@@ -581,7 +562,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('appointments').update(updatedDetails).eq('id', appointmentId).select().single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao atualizar agendamento:", errorMessage);
       alert(`Erro ao atualizar agendamento: ${errorMessage}`);
     } else if (data) {
       setAppointments(prev => prev.map(app => (app.id === appointmentId ? data : app)).sort((a, b) => getSortableDate(a.date) - getSortableDate(b.date) || (a.time || '').localeCompare(b.time || '')));
@@ -602,7 +582,6 @@ const App: React.FC = () => {
 
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
-      console.error(`Falha na exclusão. Erro: ${errorMessage}`);
       alert(`Erro ao deletar agendamento: ${errorMessage}`);
       return false;
     }
@@ -613,7 +592,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('clinics').insert({ ...clinic, user_id: session.user.id }).select().single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao adicionar clínica:", errorMessage);
       alert(`Erro ao adicionar clínica: ${errorMessage}`);
     }
     else if (data) setClinics(prev => [...prev, data]);
@@ -623,7 +601,6 @@ const App: React.FC = () => {
     const { data, error } = await supabase.from('clinics').update(updatedClinic).eq('id', clinicId).select().single();
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao atualizar clínica:", errorMessage);
       alert(`Erro ao atualizar clínica: ${errorMessage}`);
     }
     else if (data) setClinics(prev => prev.map(c => c.id === clinicId ? data : c));
@@ -633,7 +610,6 @@ const App: React.FC = () => {
     const { error } = await supabase.from('clinics').delete().eq('id', clinicId);
     if (error) {
       const errorMessage = getErrorMessage(error);
-      console.error("Erro ao deletar clínica:", errorMessage);
       alert(`Erro ao deletar clínica: ${errorMessage}`);
     }
     else setClinics(prev => prev.filter(c => c.id !== clinicId));
@@ -650,15 +626,12 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
-    // Se estiver no domínio da Landing Page, força a renderização dela
-    // a menos que esteja em localhost (dev) e force a navegação
     if (isLandingDomain) {
         if (activePage === Page.Terms) return <TermsPage onBack={() => setActivePage(Page.Landing)} />;
         if (activePage === Page.Privacy) return <PrivacyPage onBack={() => setActivePage(Page.Landing)} />;
         return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
     }
     
-    // Tratamento de Erro de Carregamento
     if (errorState && session) {
         return (
             <div className="flex flex-col items-center justify-center space-y-4 px-6 text-center" style={{height: 'calc(100vh - 5rem)'}}>
@@ -710,6 +683,7 @@ const App: React.FC = () => {
           allPatients={allPatients}
           appointments={appointments}
           setActivePage={setActivePage}
+          ensureAppointmentsForDate={ensureAppointmentsForDate}
         />;
       case Page.Patients:
         return <PatientsPage 
@@ -743,7 +717,6 @@ const App: React.FC = () => {
          return <TermsPage onBack={() => setActivePage(isLandingDomain ? Page.Landing : Page.Home)} />;
       case Page.Privacy:
          return <PrivacyPage onBack={() => setActivePage(isLandingDomain ? Page.Landing : Page.Home)} />;
-      // Caso esteja no domínio do App mas tente acessar landing
       case Page.Landing:
          return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
       default:
@@ -766,7 +739,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Se estiver carregando, mostra tela de loading genérica
   if (loading && !session && !isLandingDomain) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-light dark:bg-dark-bg">
@@ -778,7 +750,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-black">
-      {/* Se for landing domain, usa width full, se não, limita a 800px (app mobile view) */}
       <div className={`w-full ${isLandingDomain ? '' : 'max-w-[800px]'} mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text`}>
         {!session && !isLandingDomain ? (
             <div className="flex items-center justify-center min-h-screen px-4">
@@ -805,7 +776,6 @@ const App: React.FC = () => {
                     {renderPage()}
                  </main>
               )}
-              {/* Só mostra a BottomNav se NÃO for Landing Domain e NÃO estiver na página de Landing, Terms ou Privacy */}
               {!isLandingDomain && activePage !== Page.Landing && activePage !== Page.Terms && activePage !== Page.Privacy && session && (
                 <BottomNav activePage={activePage} setActivePage={setActivePage} />
               )}

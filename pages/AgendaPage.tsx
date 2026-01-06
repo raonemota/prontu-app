@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Appointment, Patient, AppointmentStatus, Page } from '../types';
 import SubPageHeader from '../components/SubPageHeader';
@@ -13,6 +14,7 @@ interface AgendaPageProps {
   allPatients: Patient[];
   appointments: Appointment[];
   setActivePage: (page: Page) => void;
+  ensureAppointmentsForDate: (date: Date) => Promise<void>;
 }
 
 // Colors for the status dots
@@ -24,8 +26,6 @@ const statusDotColors: Record<AppointmentStatus, string> = {
 };
 
 // Helper to get local date string YYYY-MM-DD to fix timezone issues
-// IMPORTANT: This uses the date object's local time components.
-// To use this safely, ensure 'date' is set to Noon (12:00) to avoid boundary shifts.
 const getLocalDateString = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -33,9 +33,8 @@ const getLocalDateString = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointments, setActivePage }) => {
+const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointments, setActivePage, ensureAppointmentsForDate }) => {
   // Inicializa com o domingo da semana atual
-  // FIX: Noon Strategy - Start week at 12:00:00.
   const [weekStart, setWeekStart] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0); 
@@ -47,20 +46,28 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
   const todayStr = getLocalDateString(new Date());
   const todayRef = useRef<HTMLDivElement>(null);
 
-  // Scroll para o dia atual quando a página monta
+  // Sincroniza agendamentos para todos os dias da semana visível
   useEffect(() => {
-    // Pequeno timeout para garantir que o render ocorreu
+    const syncWeek = async () => {
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(weekStart);
+            d.setDate(weekStart.getDate() + i);
+            ensureAppointmentsForDate(d);
+        }
+    };
+    syncWeek();
+
+    // Scroll para o dia atual quando a página monta
     const timer = setTimeout(() => {
         if (todayRef.current) {
             todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
     }, 300);
     return () => clearTimeout(timer);
-  }, [weekStart]);
+  }, [weekStart, ensureAppointmentsForDate]);
 
   const changeWeek = (weeks: number) => {
     const newStart = new Date(weekStart);
-    // Setting hours again just to be paranoid about consistency
     newStart.setHours(12, 0, 0, 0); 
     newStart.setDate(weekStart.getDate() + (weeks * 7));
     setWeekStart(newStart);
@@ -71,7 +78,6 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
-      // Ensure hours remain at Noon after math
       d.setHours(12, 0, 0, 0); 
       days.push(d);
     }
@@ -82,7 +88,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
   const weekMonthYear = `${weekStart.toLocaleDateString('pt-BR', { month: 'long' })} ${weekStart.getFullYear()}`;
   const endOfWeek = new Date(weekStart);
   endOfWeek.setDate(weekStart.getDate() + 6);
-  // Se a semana vira o mês, ajusta o título
+  
   const title = weekStart.getMonth() === endOfWeek.getMonth() 
     ? weekMonthYear 
     : `${weekStart.toLocaleDateString('pt-BR', { month: 'short' })} - ${endOfWeek.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}`;
@@ -96,8 +102,7 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     const slots: { time: string; patient: Patient; appointment?: Appointment; type: 'recurring' | 'confirmed' | 'extra' }[] = [];
     const processedPatientIds = new Set<number>();
 
-    // 1. Verificar agendamentos REAIS no banco para este dia (Matches YYYY-MM-DD string)
-    // Aplicando Deduplicação visual para "proteger" a lista
+    // 1. Verificar agendamentos REAIS no banco para este dia
     const rawApps = appointments.filter(a => a.date === dateStr);
     const uniqueAppsMap = new Map<number, Appointment>();
 
@@ -106,7 +111,6 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
         if (!existingApp) {
             uniqueAppsMap.set(app.patient_id, app);
         } else {
-            // Deduplicação: Prioriza o que tem status (diferente de NoStatus)
             const existingHasStatus = existingApp.status && existingApp.status !== AppointmentStatus.NoStatus;
             const currentHasStatus = app.status && app.status !== AppointmentStatus.NoStatus;
 
@@ -131,15 +135,11 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
         }
     });
 
-    // 2. Verificar agendamentos RECORRENTES (que não têm agendamento real ainda)
-    // Usamos a lista 'patients' (apenas ativos) para recorrência
+    // 2. Verificar agendamentos RECORRENTES
     patients.forEach(p => {
-        // Se o paciente já tem um agendamento real (confirmado) hoje, pulamos (já está em slots)
         if (processedPatientIds.has(p.id)) return;
 
-        // Se o paciente tem atendimento neste dia da semana
         if (Array.isArray(p.appointment_days) && p.appointment_days.includes(dayOfWeek)) {
-            // Define o horário: Prioridade para horário específico do dia > horário geral > '09:00'
             let time = p.appointment_time || '09:00';
             if (p.appointment_times && p.appointment_times[dayOfWeek.toString()]) {
                 time = p.appointment_times[dayOfWeek.toString()];
@@ -153,7 +153,6 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
         }
     });
 
-    // Ordenar por horário e depois por nome
     return slots.sort((a, b) => {
         const timeDiff = a.time.localeCompare(b.time);
         if (timeDiff !== 0) return timeDiff;
@@ -161,7 +160,6 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
     });
   };
 
-  // Helper para agrupar slots por horário
   const groupSlotsByTime = (slots: ReturnType<typeof getSlotsForDay>) => {
       const grouped: Record<string, typeof slots> = {};
       slots.forEach(slot => {
@@ -250,19 +248,16 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
                                       
                                       return (
                                           <div key={time} className="flex">
-                                              {/* Coluna Horário */}
                                               <div className="w-12 pt-2.5 flex-shrink-0">
                                                   <span className="text-xs font-bold text-gray-500 dark:text-dark-subtext">{time.slice(0, 5)}</span>
                                               </div>
                                               
-                                              {/* Coluna Cards */}
                                               <div className={`flex-1 space-y-1.5 ${isCollision ? 'p-1.5 border-l-2 border-primary/40 bg-gray-50 dark:bg-dark-bg/50 rounded-r-lg' : ''}`}>
                                                   {timeSlots.map((slot, idx) => {
                                                       const cleanPhone = slot.patient.phone ? slot.patient.phone.replace(/[^\d]/g, '') : '';
                                                       const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}` : null;
                                                       
-                                                      // Determine status color dot
-                                                      let dotColor = 'bg-gray-300 dark:bg-gray-600'; // Default recurring/no status
+                                                      let dotColor = 'bg-gray-300 dark:bg-gray-600'; 
                                                       if (slot.type === 'confirmed' && slot.appointment) {
                                                           const status = slot.appointment.status || AppointmentStatus.NoStatus;
                                                           dotColor = statusDotColors[status] || dotColor;
@@ -277,7 +272,6 @@ const AgendaPage: React.FC<AgendaPageProps> = ({ patients, allPatients, appointm
                                                                 : 'bg-white border-gray-100 dark:bg-dark-card dark:border-dark-border shadow-sm'
                                                         }`}
                                                       >
-                                                          {/* Status Dot - Colored Circle */}
                                                           <div className={`w-3 h-3 rounded-full flex-shrink-0 ${dotColor}`} title={slot.type === 'recurring' ? 'Recorrente' : slot.appointment?.status} />
                                                           
                                                           <div className="flex-1 min-w-0">
