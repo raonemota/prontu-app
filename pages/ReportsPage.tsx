@@ -21,12 +21,21 @@ interface ReportsPageProps {
   setActivePage: (page: Page) => void;
 }
 
+// Helper to get local date string YYYY-MM-DD
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, clinics, user, setActivePage }) => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+  // Inicialização usando datas locais para evitar problemas de fuso horário
+  const [startDate, setStartDate] = useState(getLocalDateString(firstDayOfMonth));
+  const [endDate, setEndDate] = useState(getLocalDateString(today));
   
   // Filtros da Página Principal
   const [selectedClinicId, setSelectedClinicId] = useState<number | 'all'>('all');
@@ -54,18 +63,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
   // --- Processamento de Dados para a TELA (Visualização Diária) ---
   const groupedReport = useMemo(() => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    start.setHours(0,0,0,0);
-    end.setHours(23,59,59,999);
-
+    // Comparação direta de strings YYYY-MM-DD é segura e evita problemas de fuso horário
+    // Garantimos que pegamos apenas os primeiros 10 caracteres caso o banco tenha ISO strings completas
     const filteredApps = appointments.filter(app => {
         if (!app.date) return false;
-        const appDate = new Date(app.date);
-        if (isNaN(appDate.getTime())) return false;
         
-        // Filter by Date Range
-        if (appDate < start || appDate > end) return false;
+        const appDateOnly = app.date.substring(0, 10);
+        
+        // Filter by Date Range (String comparison)
+        if (appDateOnly < startDate || appDateOnly > endDate) return false;
 
         // Filter by Status (Only Completed or NoShow)
         if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
@@ -87,7 +93,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
         
         // Verifica se o paciente existe e NÃO está desativado
         if (patient && patient.is_active !== false) {
-            const dateKey = app.date;
+            const dateKey = app.date.substring(0, 10);
             if (!groups[dateKey]) {
                 groups[dateKey] = { date: dateKey, totalValue: 0, items: [] };
             }
@@ -140,13 +146,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     };
   }, [observerTarget]);
 
-    // Quando abrir o modal, define a clínica de exportação padrão
   const handleOpenExportModal = () => {
-      // Lógica de Controle de Acesso
       const plan = (user.tipo_assinante || user.plan || 'Free').toLowerCase();
       const isPremiumOrBeta = plan === 'premium' || plan === 'beta';
 
-      // Verificar Trial
       let isTrialActive = false;
       if (user.data_expiracao_acesso) {
           const expirationDate = new Date(user.data_expiracao_acesso);
@@ -158,7 +161,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
 
       const hasPremiumAccess = isPremiumOrBeta || isTrialActive;
 
-      // Regra 1: Usuários Free (sem trial ativo) não podem exportar relatórios
       if (!hasPremiumAccess) {
           setPremiumAlertInfo({
               title: "Recurso Premium",
@@ -168,7 +170,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           return;
       }
 
-      // Regra 2: Usuários Premium devem estar com a assinatura em dia (se tiver data)
       if (isPremiumOrBeta && user.data_expiracao_acesso) {
           const expirationDate = new Date(user.data_expiracao_acesso);
           const today = new Date();
@@ -183,14 +184,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       }
 
       if (clinics.length > 0) {
-          // Se já tem uma clínica selecionada na tela principal, usa ela. Se for 'all', pega a primeira da lista.
           setExportClinicId(selectedClinicId !== 'all' ? selectedClinicId : clinics[0].id);
       } else {
           setExportClinicId('');
       }
-      setExportFormat('pdf'); // Reset format to PDF
-      setExportPdfColor('color'); // Reset to Color
-      setExportPdfStyle('striped'); // Reset to Striped
+      setExportFormat('pdf');
+      setExportPdfColor('color');
+      setExportPdfStyle('striped');
       setIsExportModalOpen(true);
   };
   
@@ -198,7 +198,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       setIsChartModalOpen(true);
   };
 
-  // Slice data for display
   const visibleGroups = groupedReport.slice(0, displayCount);
 
   const summary = useMemo(() => {
@@ -213,30 +212,20 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
     return { totalAppointments, totalToReceive };
   }, [groupedReport]);
   
-  // --- Lógica de Exportação (PDF e CSV) ---
   const handleExport = () => {
       if (!exportClinicId) {
           alert("Por favor, selecione uma clínica para exportar.");
           return;
       }
 
-      // 1. Filtrar dados especificamente para a exportação
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      start.setHours(0,0,0,0);
-      end.setHours(23,59,59,999);
-
       const exportData = appointments.filter(app => {
           if (!app.date) return false;
-          const appDate = new Date(app.date);
-          if (isNaN(appDate.getTime())) return false;
-          
-          if (appDate < start || appDate > end) return false;
+          const appDateOnly = app.date.substring(0, 10);
+          if (appDateOnly < startDate || appDateOnly > endDate) return false;
           if (app.status !== AppointmentStatus.Completed && app.status !== AppointmentStatus.NoShow) return false;
 
           const patient = allPatients.find(p => p.id === app.patient_id);
           if (!patient || patient.clinic_id !== exportClinicId) return false;
-          
           if (patient.is_active === false) return false;
 
           return true;
@@ -245,28 +234,24 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
       const clinicName = clinics.find(c => c.id === exportClinicId)?.name || 'N/A';
 
       if (exportFormat === 'pdf') {
-          // --- GERAÇÃO DE PDF ---
           const { jsPDF } = jspdf;
           const doc = new jsPDF();
 
-          // Configuração de Título com Mês Referência
-          const referenceDate = new Date(startDate + 'T00:00:00');
+          const referenceDate = new Date(startDate + 'T12:00:00');
           const monthName = referenceDate.toLocaleString('pt-BR', { month: 'long' });
           const yearRef = referenceDate.getFullYear();
           const monthCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1);
           const titleWithMonth = `Relatório de Atendimentos - ${monthCapitalized} ${yearRef}`;
 
-          // Header mais compacto (Ajustado)
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(11); // Reduzido de 12
-          doc.text(titleWithMonth, 14, 10); // Y reduzido de 12 para 10
+          doc.setFontSize(11);
+          doc.text(titleWithMonth, 14, 10);
           
           doc.setFontSize(8); 
           doc.setFont("helvetica", "normal");
-          doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 14); // Y reduzido de 17 para 14
-          doc.text(`Clínica: ${clinicName}`, 14, 18); // Y reduzido de 21 para 18
+          doc.text(`Profissional: ${user.full_name || 'Nome não informado'}`, 14, 14);
+          doc.text(`Clínica: ${clinicName}`, 14, 18);
 
-          // Agregar por Paciente
           const patientsMap: { [key: number]: { name: string, dates: string[] } } = {};
 
           exportData.forEach(app => {
@@ -278,36 +263,34 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                           dates: []
                       };
                   }
-                  // app.date is YYYY-MM-DD
-                  if (app.date && !patientsMap[patient.id].dates.includes(app.date)) {
-                      patientsMap[patient.id].dates.push(app.date);
+                  const dOnly = app.date.substring(0, 10);
+                  if (app.date && !patientsMap[patient.id].dates.includes(dOnly)) {
+                      patientsMap[patient.id].dates.push(dOnly);
                   }
               }
           });
 
-          // Preparar Body para autoTable
           const tableBody = Object.values(patientsMap)
               .sort((a, b) => a.name.localeCompare(b.name))
               .map(p => {
                   const sortedDates = p.dates.sort();
                   const formattedDates = sortedDates.map(d => {
                       const [y, m, day] = d.split('-');
-                      return `${day}/${m}`; // Formato dd/mm
+                      return `${day}/${m}`;
                   });
 
                   return {
                       name: p.name,
-                      datesStr: formattedDates.join(' - ') // Separador com traço
+                      datesStr: formattedDates.join(' - ')
                   };
               });
           
-          // Configuração de Estilo do PDF (Cor e Zebra)
           const headerFillColor = exportPdfColor === 'color' ? [122, 58, 255] : [60, 60, 60];
           const headerTextColor = [255, 255, 255];
-          const tableTheme = exportPdfStyle; // 'striped' ou 'grid'
+          const tableTheme = exportPdfStyle;
 
           doc.autoTable({
-              startY: 22, // Começa mais perto do cabeçalho (Reduzido de 25)
+              startY: 22,
               head: [['Paciente', 'Datas dos Atendimentos']],
               body: tableBody,
               columns: [
@@ -319,26 +302,25 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
                   fillColor: headerFillColor, 
                   fontSize: 8, 
                   textColor: headerTextColor,
-                  cellPadding: 1, // Reduzido de 1.5
+                  cellPadding: 1,
                   minCellHeight: 0
               },
               styles: { 
-                  fontSize: 7.5, // Reduzido de 8
-                  cellPadding: 0.8, // Compactação máxima
+                  fontSize: 7.5,
+                  cellPadding: 0.8,
                   valign: 'middle',
                   overflow: 'linebreak',
                   minCellHeight: 0
               },
               columnStyles: {
-                  0: { cellWidth: 40 }, // Reduzido de 70 para 40 para maximizar espaço das datas
-                  1: { cellWidth: 'auto' } // Coluna Datas ocupa o resto
+                  0: { cellWidth: 40 },
+                  1: { cellWidth: 'auto' }
               }
           });
           
           doc.save(`relatorio_${clinicName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
 
       } else {
-          // --- GERAÇÃO DE CSV (EXCEL) ---
           const csvRows = [];
           csvRows.push(['Data', 'Paciente', 'Categoria', 'Status', 'Valor'].join(';'));
           exportData.sort((a, b) => b.date.localeCompare(a.date));
@@ -347,7 +329,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
           exportData.forEach(app => {
               const patient = allPatients.find(p => p.id === app.patient_id);
               if (patient) {
-                  const formattedDate = new Date(app.date + 'T00:00:00').toLocaleDateString('pt-BR');
+                  const formattedDate = new Date(app.date.substring(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR');
                   const value = (patient.session_value || 0);
                   totalExportValue += value;
                   
@@ -379,12 +361,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ allPatients, appointments, cl
   };
 
   const formatDateForDisplay = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    const date = new Date(dateString + 'T12:00:00');
     return date.toLocaleDateString('pt-BR');
   };
 
   const formatDayOfWeek = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    const date = new Date(dateString + 'T12:00:00');
     const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     return days[date.getDay()];
   };
