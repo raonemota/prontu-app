@@ -20,8 +20,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
   const handleSubscribe = (plan: 'Mensal' | 'Semestral' | 'Anual') => {
     const links = {
         'Mensal': 'https://pay.kiwify.com.br/sBnlFQM',
-        'Semestral': 'https://pay.kiwify.com.br/Ghj8s5D',
-        'Anual': 'https://pay.kiwify.com.br/bmxvXLR'
+        'Semestral': 'https://pay.kiwify.com.br/2qb9YFo',
+        'Anual': 'https://pay.kiwify.com.br/pCrfxvS'
     };
 
     const url = links[plan];
@@ -635,7 +635,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     <div className="flex flex-col mb-6">
                         <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 139,90</span>
                         <div className="flex items-baseline">
-                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 89,90</span>
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
                         </div>
                         <div className="inline-block mt-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Maior Desconto</span>
@@ -652,6 +652,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                             <CheckIcon className="w-4 h-4 text-green-500" /> 1 ano de acesso
                         </li>
                     </ul>
+                    <p className="text-white/70 text-sm font-medium mb-6">cobrado a cada 12 meses</p>
                     <button 
                         onClick={() => handleSubscribe('Anual')}
                         className="w-full py-3 border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -684,7 +685,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
               </div>
               
               <div className="flex gap-4">
-                  <a href="mailto:contato@prontu.ia.br" className="text-sm text-gray-500 hover:text-primary">Contato</a>
+                  <a href="mailto:suporte@prontu.ia.br" className="text-sm text-gray-500 hover:text-primary">Contato</a>
               </div>
           </div>
       </footer>
