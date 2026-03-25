@@ -40,7 +40,7 @@ const getSortableDate = (dateStr: string | null | undefined): number => {
 const App: React.FC = () => {
   const isLandingDomain = useMemo(() => {
     const hostname = window.location.hostname;
-    return hostname === 'prontu.ia.br' || hostname === 'www.prontu.ia.br';
+    return hostname === 'prontu.ia.br' || hostname === 'www.prontu.ia.br' || hostname.includes('localhost') || hostname.includes('run.app');
   }, []);
 
   const [session, setSession] = useState<Session | null>(null);
@@ -342,7 +342,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-black">
       <div className={`w-full ${isLandingDomain ? '' : 'max-w-[800px]'} mx-auto relative min-h-screen shadow-lg bg-light dark:bg-dark-bg text-dark dark:text-dark-text`}>
-        {!session && !isLandingDomain ? (
+        {!session && (!isLandingDomain || activePage === Page.Login || activePage === Page.SignUp) ? (
             <div className="flex items-center justify-center min-h-screen px-4">
               {activePage === Page.SignUp ? <SignUpPage setActivePage={setActivePage} /> : <LoginPage setActivePage={setActivePage} />}
             </div>
