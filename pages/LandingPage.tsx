@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Page } from '../types';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
@@ -7,6 +7,8 @@ import { ChartIcon } from '../components/icons/ChartIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
 import { StarIcon } from '../components/icons/StarIcon';
 import { ClockIcon } from '../components/icons/ClockIcon';
+import { BuildingIcon } from '../components/icons/BuildingIcon';
+import { ClinicProposalForm } from '../components/ClinicProposalForm';
 
 interface LandingPageProps {
   setActivePage: (page: Page) => void;
@@ -16,6 +18,7 @@ interface LandingPageProps {
 const APP_URL = "https://app.prontu.ia.br";
 
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
+  const [isClinicFormOpen, setIsClinicFormOpen] = useState(false);
 
   const handleSubscribe = (plan: 'Mensal' | 'Semestral' | 'Anual') => {
     const links = {
@@ -31,7 +34,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
   };
 
   const navigateToApp = () => {
-      if (window.location.hostname.includes('localhost')) {
+      const hostname = window.location.hostname;
+      if (hostname.includes('localhost') || hostname.includes('run.app')) {
           setActivePage(isLoggedIn ? Page.Home : Page.Login);
       } else {
           window.location.href = APP_URL;
@@ -512,7 +516,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                 <p className="text-lg text-gray-500 dark:text-dark-subtext">Escolha o plano ideal para o seu momento profissional.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch max-w-7xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 items-stretch max-w-7xl mx-auto">
                 
                 {/* Free Plan */}
                 <div className="order-1 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
@@ -549,7 +553,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     <div className="flex flex-col mb-6">
                         <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 14,90</span>
                         <div className="flex items-baseline">
-                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 9,90</span>
+                            <span className="text-lg font-bold text-dark dark:text-dark-text mr-1">R$</span>
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">9,90</span>
                             <span className="text-gray-400 ml-2 text-lg">/mês</span>
                         </div>
                         <div className="inline-block mt-1">
@@ -592,7 +597,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     <div className="flex flex-col mb-1">
                         <span className="text-sm font-medium text-white/60 line-through decoration-white/50">de R$ 79,90</span>
                         <div className="flex items-baseline">
-                            <span className="text-5xl font-extrabold">R$ 49,90</span>
+                            <span className="text-2xl font-bold mr-1">R$</span>
+                            <span className="text-5xl font-extrabold">49,90</span>
                         </div>
                          <div className="inline-block mt-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded">Preço de Lançamento</span>
@@ -635,7 +641,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                     <div className="flex flex-col mb-6">
                         <span className="text-sm font-medium text-gray-400 line-through decoration-red-400">de R$ 139,90</span>
                         <div className="flex items-baseline">
-                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">R$ 109,90</span>
+                            <span className="text-lg font-bold text-dark dark:text-dark-text mr-1">R$</span>
+                            <span className="text-4xl font-extrabold text-dark dark:text-dark-text">109,90</span>
                         </div>
                         <div className="inline-block mt-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded">Maior Desconto</span>
@@ -663,9 +670,47 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                         <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
                     </p>
                 </div>
+
+                {/* Clinics Plan */}
+                <div className="order-5 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-3xl p-6 hover:border-gray-300 transition-colors h-full flex flex-col">
+                    <h3 className="text-xl font-bold text-gray-500 dark:text-dark-subtext mb-2">Clínicas</h3>
+                    <div className="flex items-baseline mb-6">
+                        <span className="text-2xl font-extrabold text-dark dark:text-dark-text">Sob Consulta</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-8 border-b border-gray-100 dark:border-dark-border pb-8">
+                        Soluções personalizadas para equipes e gestão multi-clínicas.
+                    </p>
+                    <ul className="space-y-4 mb-8 flex-1">
+                         <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <BuildingIcon className="w-4 h-4 text-primary" /> Múltiplos profissionais
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Gestão centralizada
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Suporte VIP
+                        </li>
+                        <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-dark-subtext">
+                            <CheckIcon className="w-4 h-4 text-green-500" /> Treinamento da equipe
+                        </li>
+                    </ul>
+                    <button 
+                        onClick={() => setIsClinicFormOpen(true)}
+                        className="w-full py-3 bg-dark dark:bg-white text-white dark:text-dark font-bold rounded-xl hover:opacity-90 transition-opacity"
+                    >
+                        Quero uma proposta
+                    </button>
+                    <div className="mt-3 h-4"></div>
+                </div>
             </div>
         </div>
       </section>
+
+      {/* Clinic Proposal Form Modal */}
+      <ClinicProposalForm 
+        isOpen={isClinicFormOpen} 
+        onClose={() => setIsClinicFormOpen(false)} 
+      />
 
       {/* Footer */}
       <footer className="bg-white dark:bg-dark-card py-12 border-t border-gray-100 dark:border-dark-border">
