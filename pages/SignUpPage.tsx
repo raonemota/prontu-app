@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Page } from '../types';
 
@@ -14,6 +14,26 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trialDays, setTrialDays] = useState<number>(7);
+
+  useEffect(() => {
+    const fetchTrialDays = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'trial_days')
+          .single();
+        
+        if (data && !error) {
+          setTrialDays(Number(data.value));
+        }
+      } catch (e) {
+        console.error("Erro ao buscar trial_days:", e);
+      }
+    };
+    fetchTrialDays();
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +41,9 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
     setError(null);
     setMessage(null);
 
-    // Calcular data de expiração (Hoje + 7 dias)
+    // Calcular data de expiração (Hoje + trialDays)
     const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 7);
+    expirationDate.setDate(expirationDate.getDate() + trialDays);
     
     // URL da imagem de perfil padrão
     const defaultProfilePic = 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png';
@@ -37,7 +57,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
           profile_pic: defaultProfilePic,
           tipo_assinante: 'Free', // Padrão Free
           status_assinatura: 'trialing', // Status de teste
-          data_expiracao_acesso: expirationDate.toISOString() // Válido por 7 dias
+          data_expiracao_acesso: expirationDate.toISOString() // Válido pelo período configurado
         }
       }
     });
@@ -58,7 +78,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
           }).eq('id', data.user.id);
       }
 
-      setMessage("Cadastro realizado! Aproveite 7 dias de acesso Premium grátis. Verifique seu e-mail para confirmação.");
+      setMessage(`Cadastro realizado! Aproveite ${trialDays} dias de acesso Premium grátis. Verifique seu e-mail para confirmação.`);
     }
     setLoading(false);
   };
@@ -71,7 +91,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
       <div className="text-center">
           <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu Logo" className="mx-auto h-16 w-auto" />
           <h1 className="text-2xl font-bold text-dark dark:text-dark-text mt-4">Crie sua Conta</h1>
-          <p className="text-gray-500 dark:text-dark-subtext">Ganhe 7 dias de Premium Grátis.</p>
+          <p className="text-gray-500 dark:text-dark-subtext">Ganhe {trialDays} dias de Premium Grátis.</p>
       </div>
       
       {error && <p className="text-center text-danger bg-red-100 dark:bg-red-900/50 dark:text-red-300 p-3 rounded-lg">{error}</p>}

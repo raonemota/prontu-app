@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../types';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
@@ -9,6 +9,7 @@ import { StarIcon } from '../components/icons/StarIcon';
 import { ClockIcon } from '../components/icons/ClockIcon';
 import { BuildingIcon } from '../components/icons/BuildingIcon';
 import { ClinicProposalForm } from '../components/ClinicProposalForm';
+import { supabase } from '../supabaseClient';
 
 interface LandingPageProps {
   setActivePage: (page: Page) => void;
@@ -19,6 +20,26 @@ const APP_URL = "https://app.prontu.ia.br";
 
 const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) => {
   const [isClinicFormOpen, setIsClinicFormOpen] = useState(false);
+  const [trialDays, setTrialDays] = useState<number>(7);
+
+  useEffect(() => {
+    const fetchTrialDays = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'trial_days')
+          .single();
+        
+        if (data && !error) {
+          setTrialDays(Number(data.value));
+        }
+      } catch (e) {
+        console.error("Erro ao buscar trial_days:", e);
+      }
+    };
+    fetchTrialDays();
+  }, []);
 
   const handleSubscribe = (plan: 'Mensal' | 'Semestral' | 'Anual') => {
     const links = {
@@ -582,7 +603,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                         Assinar Mensal
                     </button>
                     <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
-                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                        <ShieldCheckIcon className="w-3 h-3" /> {trialDays} dias de garantia grátis
                     </p>
                 </div>
 
@@ -631,7 +652,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                         Assinar Semestral
                     </button>
                     <p className="text-[10px] text-center mt-3 text-white/80 font-bold flex items-center justify-center gap-1">
-                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                        <ShieldCheckIcon className="w-3 h-3" /> {trialDays} dias de garantia grátis
                     </p>
                 </div>
 
@@ -667,7 +688,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
                         Assinar Anual
                     </button>
                      <p className="text-[10px] text-center mt-3 text-green-600 dark:text-green-400 font-bold flex items-center justify-center gap-1">
-                        <ShieldCheckIcon className="w-3 h-3" /> 7 dias de garantia grátis
+                        <ShieldCheckIcon className="w-3 h-3" /> {trialDays} dias de garantia grátis
                     </p>
                 </div>
 

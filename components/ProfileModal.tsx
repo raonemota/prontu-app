@@ -87,7 +87,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
   };
   
   const goToPremium = () => {
-      if (window.location.hostname.includes('localhost') && navigateTo) {
+      const hostname = window.location.hostname;
+      if ((hostname.includes('localhost') || hostname.includes('run.app')) && navigateTo) {
           onClose();
           navigateTo(Page.Landing);
       } else {

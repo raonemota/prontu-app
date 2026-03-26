@@ -39,7 +39,7 @@ const getProjectIdFromUrl = (url: string) => {
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'settings'>('users');
   
   // States for Users
   const [users, setUsers] = useState<User[]>([]);
@@ -48,6 +48,11 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  // States for Settings
+  const [trialDays, setTrialDays] = useState<number>(7);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
   // States for Logs
   const [logs, setLogs] = useState<WebhookLog[]>([]);
@@ -71,14 +76,60 @@ const AdminPage: React.FC<AdminPageProps> = ({ setActivePage, currentUser }) => 
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [helpTab, setHelpTab] = useState<'steps' | 'sql' | 'function'>('steps');
 
-  // Fetch Users
+  // Fetch Data
   useEffect(() => {
     if (activeTab === 'users') {
         fetchAllUsers();
-    } else {
+    } else if (activeTab === 'logs') {
         fetchLogs();
+    } else if (activeTab === 'settings') {
+        fetchSettings();
     }
   }, [activeTab, currentUser]);
+
+  const fetchSettings = async () => {
+    if (!currentUser.is_admin) return;
+    setLoadingSettings(true);
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('key', 'trial_days')
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Key not found, use default
+          setTrialDays(7);
+        } else {
+          throw error;
+        }
+      } else if (data) {
+        setTrialDays(Number(data.value));
+      }
+    } catch (error: any) {
+      console.error("Erro ao buscar configurações:", error.message);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'trial_days', value: trialDays.toString() });
+
+      if (error) throw error;
+      alert("Configurações salvas com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao salvar configurações:", error.message);
+      alert("Erro ao salvar configurações: " + error.message);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const fetchAllUsers = async () => {
       if (!currentUser.is_admin) return;
@@ -657,6 +708,12 @@ serve(async (req) => {
           >
               Logs de Webhook
           </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+              Configurações
+          </button>
       </div>
 
       {/* Tabela de Usuários */}
@@ -808,6 +865,53 @@ serve(async (req) => {
                     </table>
                 </div>
               )}
+          </div>
+      )}
+
+      {/* Configurações */}
+      {activeTab === 'settings' && (
+          <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md space-y-6 animate-fade-in">
+              <h3 className="text-lg font-bold text-dark dark:text-dark-text">Configurações do Sistema</h3>
+              
+              <div className="max-w-md space-y-4">
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl">
+                      <label className="block text-sm font-bold text-primary dark:text-purple-300 mb-2">
+                          Período de Teste Grátis (Dias)
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-dark-subtext mb-4">
+                          Define quantos dias de acesso Premium o usuário ganha ao se cadastrar.
+                      </p>
+                      <div className="flex items-center gap-3">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="365"
+                            value={trialDays} 
+                            onChange={(e) => setTrialDays(parseInt(e.target.value) || 0)}
+                            className="w-24 px-3 py-2 border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-bg rounded-lg text-center font-bold text-lg"
+                          />
+                          <span className="text-sm font-medium text-gray-600 dark:text-dark-subtext">dias</span>
+                      </div>
+                  </div>
+
+                  <button 
+                    onClick={handleSaveSettings}
+                    disabled={savingSettings || loadingSettings}
+                    className="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-lg shadow-primary/20"
+                  >
+                      {savingSettings ? 'Salvando...' : 'Salvar Configurações'}
+                  </button>
+              </div>
+
+              <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                  <h4 className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                      <span>💡</span> Dica de Administrador
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-dark-subtext leading-relaxed">
+                      Alterar o período de teste afeta apenas os <strong>novos cadastros</strong>. 
+                      Usuários que já possuem conta não terão sua data de expiração alterada automaticamente.
+                  </p>
+              </div>
           </div>
       )}
 

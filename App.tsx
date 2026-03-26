@@ -126,7 +126,7 @@ const App: React.FC = () => {
     };
     getInitialSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session) => {
       if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         setSession(null);
         setPatients([]);

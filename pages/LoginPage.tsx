@@ -56,7 +56,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   };
   
   const goToLanding = () => {
-    if (window.location.hostname.includes('localhost')) {
+    const hostname = window.location.hostname;
+    if (hostname.includes('localhost') || hostname.includes('run.app')) {
         setActivePage(Page.Landing);
     } else {
         window.location.href = LANDING_URL;

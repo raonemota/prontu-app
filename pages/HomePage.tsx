@@ -336,7 +336,8 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   };
 
   const handleUpgradeClick = () => {
-    if (window.location.hostname.includes('localhost') && setActivePage) {
+    const hostname = window.location.hostname;
+    if ((hostname.includes('localhost') || hostname.includes('run.app')) && setActivePage) {
         setActivePage(Page.Landing);
     } else {
         window.location.href = `${LANDING_URL}#pricing`;
