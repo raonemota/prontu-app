@@ -18,6 +18,7 @@ import AgendaPage from './pages/AgendaPage';
 import CookieConsent from './components/CookieConsent';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import ReferralPage from './pages/ReferralPage';
 
 // Helper function to extract a readable error message
 const getErrorMessage = (error: unknown): string => {
@@ -100,6 +101,12 @@ const App: React.FC = () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const refParam = params.get('ref');
+    if (refParam) {
+      localStorage.setItem('referralCode', refParam);
+    }
     
     if (isLandingDomain) {
         const path = window.location.pathname;
@@ -132,7 +139,7 @@ const App: React.FC = () => {
         setPatients([]);
         setAppointments([]);
         setUserProfile(null);
-        if (!isLandingDomain) setActivePage(Page.Login);
+        setActivePage(isLandingDomain ? Page.Landing : Page.Login);
         setLoading(false);
         return;
       }
@@ -185,7 +192,7 @@ const App: React.FC = () => {
     if (!session) return;
     const avatarUrl = patient.gender === Gender.Male 
         ? 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/7r32xseg58k9/002-young-boy.png' 
-        : 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
+        : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
     const { data, error } = await supabase.from('patients').insert({ ...patient, user_id: session.user.id, profile_pic: avatarUrl }).select('*, clinics(name)').single();
     if (data) setPatients(prev => [...prev, data as Patient]);
   };
@@ -324,6 +331,16 @@ const App: React.FC = () => {
         );
     }
 
+    if (!session || !userProfile) {
+        switch (activePage) {
+            case Page.Terms: return <TermsPage onBack={() => setActivePage(Page.Home)} />;
+            case Page.Privacy: return <PrivacyPage onBack={() => setActivePage(Page.Home)} />;
+            case Page.Landing: return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;
+            case Page.SignUp: return <SignUpPage setActivePage={setActivePage} />;
+            default: return <LoginPage setActivePage={setActivePage} />;
+        }
+    }
+
     switch (activePage) {
       case Page.Home: return <HomePage patients={patients} allPatients={allPatients} appointments={appointments} updateAppointmentStatus={updateAppointmentStatus} updateAppointmentDetails={updateAppointmentDetails} deleteAppointment={deleteAppointment} addAppointment={addAppointment} user={userProfile!} updateUser={updateUserProfile} theme={theme} toggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')} ensureAppointmentsForDate={ensureAppointmentsForDate} setActivePage={setActivePage} recoveryMode={recoveryMode} />;
       case Page.Agenda: return <AgendaPage patients={patients} allPatients={allPatients} appointments={appointments} setActivePage={setActivePage} ensureAppointmentsForDate={ensureAppointmentsForDate} />;
@@ -332,6 +349,7 @@ const App: React.FC = () => {
       case Page.Clinics: return <ClinicsPage clinics={clinics} addClinic={addClinic} updateClinic={updateClinic} deleteClinic={deleteClinic} setActivePage={setActivePage} />;
       case Page.DeactivatedPatients: return <DeactivatedPatientsPage deactivatedPatients={deactivatedPatients} activatePatient={activatePatient} setActivePage={setActivePage} />;
       case Page.Admin: return <AdminPage setActivePage={setActivePage} currentUser={userProfile!} />;
+      case Page.Referral: return <ReferralPage currentUser={userProfile!} onBack={() => setActivePage(Page.Home)} />;
       case Page.Terms: return <TermsPage onBack={() => setActivePage(Page.Home)} />;
       case Page.Privacy: return <PrivacyPage onBack={() => setActivePage(Page.Home)} />;
       case Page.Landing: return <LandingPage setActivePage={setActivePage} isLoggedIn={!!session} />;

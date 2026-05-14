@@ -46,7 +46,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
     expirationDate.setDate(expirationDate.getDate() + trialDays);
     
     // URL da imagem de perfil padrão
-    const defaultProfilePic = 'https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/unknown.png';
+    const defaultProfilePic = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -76,6 +76,18 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ setActivePage }) => {
               status_assinatura: 'trialing',
               data_expiracao_acesso: expirationDate.toISOString()
           }).eq('id', data.user.id);
+      }
+
+      if (data.user) {
+          const referralCode = localStorage.getItem('referralCode');
+          if (referralCode) {
+              await supabase.from('referrals').insert({
+                  referrer_id: referralCode,
+                  referred_id: data.user.id,
+                  status: 'pendente'
+              });
+              localStorage.removeItem('referralCode');
+          }
       }
 
       setMessage(`Cadastro realizado! Aproveite ${trialDays} dias de acesso Premium grátis. Verifique seu e-mail para confirmação.`);

@@ -32,7 +32,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, patient,
 
   // Provide fallbacks for potentially null patient data
   const patientName = patient.name || 'Nome não informado';
-  const patientProfilePic = patient.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
+  const patientProfilePic = patient.profile_pic || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
   
   // Format time to HH:MM (remove seconds if present)
   const formattedTime = appointment.time ? appointment.time.slice(0, 5) : '';

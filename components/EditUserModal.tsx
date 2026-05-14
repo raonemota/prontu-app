@@ -80,7 +80,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user, on
           
           <div className="mb-6 flex items-center gap-3 p-3 bg-gray-50 dark:bg-dark-bg rounded-lg">
              <img 
-                src={user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png'} 
+                src={user.profile_pic || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} 
                 alt="" 
                 className="w-10 h-10 rounded-full object-cover"
               />

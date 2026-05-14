@@ -185,9 +185,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
           <div className="flex flex-col items-center space-y-4 mb-6">
             <img src={formData.profile_pic} alt="User" className="w-24 h-24 rounded-full bg-gray-200 object-cover" />
             
-            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getPlanColor()}`}>
+            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center justify-center ${getPlanColor()}`}>
                 {getPlanLabel()}
             </div>
+            {user.data_expiracao_acesso && (!user.tipo_assinante || user.tipo_assinante.toLowerCase() === 'free') && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Válido até <strong>{new Date(user.data_expiracao_acesso).toLocaleDateString('pt-BR')}</strong>
+                </p>
+            )}
 
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">
               {uploading ? 'Enviando...' : 'Trocar foto'}

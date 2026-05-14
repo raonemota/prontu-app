@@ -57,10 +57,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ setActivePage }) => {
   
   const goToLanding = () => {
     const hostname = window.location.hostname;
+    const referralCode = localStorage.getItem('referralCode') || new URLSearchParams(window.location.search).get('ref');
+    
     if (hostname.includes('localhost') || hostname.includes('run.app')) {
         setActivePage(Page.Landing);
     } else {
-        window.location.href = LANDING_URL;
+        const url = new URL(LANDING_URL);
+        if (referralCode) {
+            url.searchParams.set('ref', referralCode);
+        }
+        window.location.href = url.toString();
     }
   };
   

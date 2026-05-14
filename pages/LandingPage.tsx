@@ -48,18 +48,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ setActivePage, isLoggedIn }) 
         'Anual': 'https://pay.kiwify.com.br/pCrfxvS'
     };
 
-    const url = links[plan];
+    let url = links[plan];
     if (url) {
+        const refCode = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('referralCode');
+        if (refCode) {
+            url += `?src=${refCode}`;
+        }
         window.open(url, '_blank');
     }
   };
 
   const navigateToApp = () => {
       const hostname = window.location.hostname;
+      const refCode = new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('referralCode');
+
       if (hostname.includes('localhost') || hostname.includes('run.app')) {
           setActivePage(isLoggedIn ? Page.Home : Page.Login);
       } else {
-          window.location.href = APP_URL;
+          const url = new URL(APP_URL);
+          if (refCode) {
+              url.searchParams.set('ref', refCode);
+          }
+          window.location.href = url.toString();
       }
   };
 

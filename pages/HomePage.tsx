@@ -9,6 +9,7 @@ import { CalendarTodayIcon } from '../components/icons/CalendarTodayIcon';
 import FeatureAnnouncementModal from '../components/FeatureAnnouncementModal';
 import { StarIcon } from '../components/icons/StarIcon';
 import { ShieldCheckIcon } from '../components/icons/ShieldCheckIcon';
+import { CloseIcon } from '../components/icons/CloseIcon';
 
 // Add setActivePage to interface to allow navigation from profile modal
 interface HomePageProps {
@@ -237,6 +238,8 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isTrialBannerDismissed, setIsTrialBannerDismissed] = useState(() => localStorage.getItem('hideTrialBanner') === 'true');
+  const [isReferralBannerDismissed, setIsReferralBannerDismissed] = useState(() => localStorage.getItem('hideReferralBanner') === 'true');
 
   // Efeito para abrir o modal de perfil se estiver em modo de recuperação
   useEffect(() => {
@@ -350,7 +353,7 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
   }, [editingAppointment, allPatients]);
   
   const userFirstName = (user.full_name || 'Usuário').split(' ')[0];
-  const userProfilePic = user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png';
+  const userProfilePic = user.profile_pic || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
 
   // Format expiration date for display
   const formattedExpiration = user.data_expiracao_acesso 
@@ -365,17 +368,26 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
         >
           <div className="flex items-center justify-between">
               <img src="https://mnlzeruerqwuhhgfaavy.supabase.co/storage/v1/object/public/files_config/image-removebg-preview%20(1).png" alt="Prontu" className="h-8 w-auto"/>
-              <div 
-                  className="flex items-center space-x-3 cursor-pointer"
-                  onClick={() => setIsProfileModalOpen(true)}
-                  role="button"
-                  aria-label="Abrir perfil do usuário"
-              >
-                  <div>
-                    <h1 className="text-md font-semibold text-right text-dark dark:text-dark-text">Olá, {userFirstName}!</h1>
-                    <p className="text-xs text-right text-gray-500 dark:text-dark-subtext">Seja bem vindo(a)</p>
+              <div className="flex items-center space-x-3">
+                  <div 
+                      onClick={() => setActivePage && setActivePage(Page.Referral)} 
+                      className="p-2 bg-blue-50 dark:bg-blue-900/20 text-indigo-600 dark:text-indigo-400 rounded-full hover:bg-blue-100 transition-colors cursor-pointer"
+                      title="Indique e Ganhe"
+                  >
+                      🎁
                   </div>
-                  <img src={userProfilePic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-primary" />
+                  <div 
+                      className="flex items-center space-x-3 cursor-pointer"
+                      onClick={() => setIsProfileModalOpen(true)}
+                      role="button"
+                      aria-label="Abrir perfil do usuário"
+                  >
+                      <div>
+                        <h1 className="text-md font-semibold text-right text-dark dark:text-dark-text">Olá, {userFirstName}!</h1>
+                        <p className="text-xs text-right text-gray-500 dark:text-dark-subtext">Seja bem vindo(a)</p>
+                      </div>
+                      <img src={userProfilePic} alt="User" className="w-12 h-12 rounded-full bg-gray-200 object-cover ring-2 ring-primary" />
+                  </div>
               </div>
           </div>
         </header>
@@ -384,8 +396,16 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
       </div>
 
       {/* Trial / Expired Banner */}
-      {!isPremiumOrBeta && (
-        <div className="mx-1 mt-2 mb-2">
+      {!isPremiumOrBeta && !isTrialBannerDismissed && (
+        <div className="mx-1 mt-2 mb-2 relative">
+             <button 
+                onClick={(e) => { e.stopPropagation(); setIsTrialBannerDismissed(true); localStorage.setItem('hideTrialBanner', 'true'); }}
+                className="absolute top-1 right-2 z-20 p-1 bg-white/50 hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/40 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
+                title="Fechar aviso"
+                aria-label="Fechar aviso"
+             >
+                <CloseIcon className="w-4 h-4" />
+             </button>
             {isTrial ? (
                 <div 
                     onClick={handleUpgradeClick}
@@ -435,6 +455,34 @@ const HomePage: React.FC<HomePageProps> = ({ patients, allPatients, appointments
                 </div>
             )}
         </div>
+      )}
+
+      {/* Indique e Ganhe Banner */}
+      {!isReferralBannerDismissed && (
+          <div className="mx-1 mt-2 mb-2 relative">
+              <button 
+                  onClick={(e) => { e.stopPropagation(); setIsReferralBannerDismissed(true); localStorage.setItem('hideReferralBanner', 'true'); }}
+                  className="absolute top-2 right-2 z-20 p-1 hover:bg-white/50 dark:hover:bg-black/20 rounded-full text-indigo-400 hover:text-indigo-600 dark:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
+                  aria-label="Fechar indique e ganhe"
+              >
+                  <CloseIcon className="w-4 h-4" />
+              </button>
+              <div 
+                  onClick={() => setActivePage && setActivePage(Page.Referral)}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800/50 cursor-pointer hover:scale-[1.01] transition-transform flex items-center justify-between shadow-sm pr-10"
+              >
+                  <div className="flex items-center gap-3">
+                      <div className="bg-white dark:bg-dark-card p-2 rounded-lg shadow-sm">
+                          <span className="text-xl">🎁</span>
+                      </div>
+                      <div>
+                          <p className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Indique e Ganhe</p>
+                          <p className="text-xs text-indigo-700 dark:text-indigo-300">Ganhe 1 mês de Premium grátis!</p>
+                      </div>
+                  </div>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">&rarr;</span>
+              </div>
+          </div>
       )}
       
       <div className="p-1">

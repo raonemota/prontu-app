@@ -12,6 +12,7 @@ export enum Page {
   Landing = 'Landing',
   Terms = 'Terms',
   Privacy = 'Privacy',
+  Referral = 'Referral',
 }
 
 export enum AppointmentStatus {
@@ -81,4 +82,13 @@ export interface Appointment {
   time: string; // "HH:MM"
   status: AppointmentStatus;
   observation?: string | null;
+}
+
+export interface Referral {
+  id: string;
+  referrer_id: string;
+  referred_id: string;
+  status: 'pendente' | 'recompensado';
+  created_at: string;
+  referred_user?: { full_name: string; email?: string }; // Joined info
 }

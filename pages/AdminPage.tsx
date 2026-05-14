@@ -751,7 +751,7 @@ serve(async (req) => {
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="bg-white dark:bg-dark-card border-b dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-bg/50">
                     <td className="px-4 py-3 font-medium text-dark dark:text-dark-text flex items-center gap-3">
-                      <img src={user.profile_pic || 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/prontu-3qf08b/assets/m9asaisyvrr2/001-woman.png'} className="w-8 h-8 rounded-full object-cover" alt="" />
+                      <img src={user.profile_pic || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'} className="w-8 h-8 rounded-full object-cover" alt="" />
                       <div>
                         <div className="flex items-center gap-1">
                             <span>{user.full_name}</span>
